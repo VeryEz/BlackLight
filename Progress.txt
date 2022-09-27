@@ -1,0 +1,110 @@
+BlackLightMenu.cpp/.h - added menu system
+cheat_vehicle.cpp - added vehicle quick turn check if menu is active dont allow quick turn on backspace
+added new speedometer system and removed render vehicle hp bar and player hp bar
+removed default sobeit hud and hud indicators
+added radio & mp3 volume slider
+added new scoreboard
+fixed radio menu crash
+added raknet for bots
+added car hard flip
+IMPORTANT: before deleting original mod_sa menu move every function inside new menu system
+
+- To Do:
+Menu:
+- fix reset menu position button in settings - removed
+- after blacklight menu is finished remove sobeit menu and put sobeit menu key for blacklight menu
+- add option to go back to main menu from current menu via right mouse click - done
+- add custom style colors for AddMenuDescription - done
+- add hud settings menu in settings menu - done
+- add weapons menu in player functions menu - done
+- add vehicle upgrades in vehicle functions menu
+- add mp3 current playing song name & duration into the new hud - done
+- add radio song name into the new hud - done
+- add button for mp3 song loop in settings - done
+- add default stick mod into funcs for target in players menu
+- add airbreak in players menu - done
+- add player mute menu in players functions - done
+- fix or remove users panel menu view
+- add custom colors for inc dec buttons
+- add menu for bot ids 
+
+Mods:
+fix pSampMulti->HudThread functions are sometimes off - done
+fix renderpolicedetector - done
+fix rainbow hud after deactivating to reset to default hud colors - done
+Initialize new mods in cheat.cpp under pSampMulti->HudThread - done
+BlackLightCore.cpp - fix camera overview pCam->SetFOVSpeed - nah no need works good without it
+add notification msg in chat when some functions is activated via key press
+remove render player hp bar proxydirect.cpp - done
+add custom position set for speedometer x ,y
+remove default sobeit hud and replace it with the new one - done
+fix speedometer position not appearing on screen - done
+remove set.esp_vehicles_defaulton and cheat_state->render_vehicle_tags from cheat_generic.cpp - done
+add kill counter - done
+add brk dance in vehicle functions - done
+add objects & pickup esp in ESP Menu - done
+add fast rotation func - done
+see what to do with heli custom rotor speed - removed
+add admin & friend tags on imgui new players tags - done
+add new imgui speedometer - done
+improve new imgui players info text colors
+test if PTP round freeze works - fix me
+add Damager info menu - done
+add Give jetpack into new menu - done
+add set custom gravity into new menu -> addon
+add chams & see players through walls - done
+add vehicle wheels status pulse  - done
+add handstand - removed
+fix slap troll & test on ugbase server - works
+add pizdarvanka player & vehicle and for target - done
+add steps esp for players & our player - removed
+FIX getDistanceCrossed - removed
+FIX getKillsCount - done
+FIX player stick menu - removed
+add option bot say - done /.bl.botsay [bot id] [text]
+add bot fake bullets
+add bot pizdarvanka
+fix bot shooter sync - bot attacker can be used instead
+fix bot info menu - fixed
+add bot follow target
+add bot follow anim id
+add cmd set bot follow anim
+test if click warp works - works
+fix teletext
+fix damager info menu Z pos check - done
+add 	pPedSelf->GetVehicle()->SetWheelVisibility(eWheels::FRONT_LEFT_WHEEL, false); - added
+fix auto reconnect
+add warp to player menu - done
+add custom game speed in menu - done
+add /.bl.pstick - set stick target via cmd
+add teleport to objects / pickups - done
+add spammer system
+add players freeze - done
+add slow down system for player surf
+fix trailer tracers - done
+fix freeze players 
+
+//troll menu for target
+create 1 menus for:
+fuck , copy chat, follow troll, player stick,  - done
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+BlackLight UPDATE V1.4 - 
+- Update Started: 09.24.2022. 
+
+- REQUIRED FIX - fix all admins are being removed from admins list when deleting last admin in the row
+fix when clicked on 'Copy server address' button in Settings game crashes - fixed
+add original mod s0beit stick-to-player&car mod
+add more descriptions for functions
+add more customisation options for hud
+add custom Blacklight game chat
+move all functions from dumb menu to new Blacklight menu
+fix teleport menu text only stating 'Teleport'
+fix menu god mode for player and players vehicle
+add menu for vehicle recording - done
+add spammer system
+add telepos menu in the hud
+add menu for custom url audio stream play using sa:mp rpc system - done
+check whats wrong with the teletext
+improve imgui's speedmeter look
