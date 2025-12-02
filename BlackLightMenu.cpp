@@ -76,7 +76,7 @@ void CBlackLightMenu::Initialize_ImGui_Menus(void)
    this->ImInitBlackLight_NewSpeedometer(BlackLightFuncs->Menu.bImMenuNewSpeedometer);
 	this->ImInitBlackLight_DamagerMenu();
 	this->ImInitBlackLight_GoCMenu();
-	this->ImInitBlackLight_RenderBotUI3D();
+	//this->ImInitBlackLight_RenderBotUI3D();
 	//this->ImInitBlackLight_BotInfoIDMenu(g_BotFuncs->BotSettings.bShowBotInfoID);
 }				
 static float posXOffset = 0.0f;
@@ -4199,9 +4199,6 @@ void CBlackLightMenu::ImInitBlackLight_RenderBotUI3D(void)
 		{
 			ImGui::Text("BOT %d", botID);
 
-			// ---------------------------------------
-// SKIN CHANGER
-// ---------------------------------------
 			ImGui::Separator();
 			ImGui::Text("Skin:");
 
@@ -5296,4 +5293,5 @@ ImVec2 CBlackLightMenu::MenuItemMatchMenuWidth(void)
 ImVec2 CBlackLightMenu::MenuItemMatchMenuWidth(float fWidthCustomSet)
 {
 	return ImVec2(-FLT_MIN - fWidthCustomSet, 25.0f);
+
 }
