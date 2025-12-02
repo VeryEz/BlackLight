@@ -50,6 +50,7 @@ static void cheat_main_actor ( double time_diff )
 		Log( "actor_info_get() returned NULL." );
 		return;
 	}
+	set.fPlayerID = actor_find_nearest(ACTOR_ALIVE | ACTOR_NOT_AFK | ACTOR_NOT_SAME_VEHICLE); //GOD OF CARS TARGET
 
 	vect3_copy( &info->base.matrix[4 * 3], cheat_state->actor.coords );
 	cheat_handle_freeze_vehicles( nullptr, info );
@@ -57,16 +58,22 @@ static void cheat_main_actor ( double time_diff )
 	cheat_handle_teleport( nullptr, info, time_diff );
 	cheat_handle_unfreeze( nullptr, info, time_diff );
 	cheat_handle_emo( nullptr, info, time_diff );
-
+	cheat_handle_stick(nullptr, info, time_diff);
 	// the following functions can be found in cheat_actor.cpp
 	cheat_handle_actor_air_brake( info, time_diff );
 	cheat_handle_actor_autoaim( info, time_diff );
-
+	cheat_handle_walk_on_water(time_diff);
+    cheat_handle_player_jump(info, time_diff);
+	cheat_handle_player_frontbackflip(info, time_diff);
+	//cheat_handle_breakdance(info,time_diff);
+	cheat_handle_inverted_walk(time_diff);
+	//cheat_handle_spiderFeet(time_diff);
+	//cheat_handle_spiderCam(time_diff);
 	// cheat_handle_SpiderFeet(info, time_diff);
 	cheat_handle_actor_fly(info, time_diff);
 	cheat_handle_actor_surf(info);
 
-	if ( set.custom_runanimation_enabled )
+	if (BlackLightFuncs->bCustomRunAnim)
 		pPedSelf_setMoveAnimation__array( set.custom_runanimation_id );
 
 
@@ -94,7 +101,7 @@ static void cheat_main_vehicle ( double time_diff )
 	cheat_handle_freeze_vehicles( info, nullptr );
 	cheat_handle_hp( info, nullptr, time_diff );
 	cheat_handle_emo( info, nullptr, time_diff );
-
+   cheat_handle_stick(info, nullptr, time_diff);
 	// the following functions can be found in cheat_vehicle.cpp
 	cheat_handle_vehicle_protection( info, time_diff );
 	cheat_handle_vehicle_unflip( info, time_diff );
@@ -110,6 +117,7 @@ static void cheat_main_vehicle ( double time_diff )
 	cheat_handle_vehicle_fly( info, time_diff );
 	cheat_handle_vehicle_keepTrailer( info, time_diff );
 	cheat_handle_vehicle_repair_car( info, time_diff );
+	cheat_handle_vehicle_autoFlip(info, time_diff);
 	cheat_handle_vehicle_spiderWheels( info, time_diff );
 	cheat_handle_freezerot(info, time_diff);
 	//cheat_handle_vehicle_slowTeleport( info, time_diff );
@@ -134,6 +142,7 @@ void cheat_hook ( HWND wnd )
 	__time_current = __time_get();
 	g_timeDiff = TIME_TO_DOUBLE(time_get() - time_last);
 
+
 	// for looping
 	int i;
 
@@ -149,9 +158,9 @@ void cheat_hook ( HWND wnd )
 		// set default cheat_state variables
 		cheat_state = &__cheat_state;
 		cheat_state->_generic.spoof_weapon = -1;
-		cheat_state->actor.invulnerable = true;
+	    BlackLightFuncs->bGodModePlayer = cheat_state->actor.invulnerable = true;
 		cheat_state->vehicle.freezerot = false;
-		cheat_state->vehicle.invulnerable = true;
+		BlackLightFuncs->bGodModeVehicle = cheat_state->vehicle.invulnerable = true;
 		cheat_state->vehicle.hp_tire_support = true;
 		cheat_state->vehicle.hp_minimum_on = 1;
 		cheat_state->vehicle.hp_regen_on = 1;
@@ -205,10 +214,14 @@ void cheat_hook ( HWND wnd )
 	if ( vehicle_info == nullptr && actor_info == nullptr )
 	{
 		if (BlackLightFuncs->bAirbreakPlayer
-		 ||    BlackLightFuncs->bAirbreakVehicle)
+		 ||    BlackLightFuncs->bAirbreakVehicle
+			|| cheat_state->actor.stick
+			|| cheat_state->vehicle.stick)
 		{
 			BlackLightFuncs->bAirbreakPlayer = 0;
 			BlackLightFuncs->bAirbreakVehicle = 0;
+			cheat_state->actor.stick = 0;
+			cheat_state->vehicle.stick = 0;
 			cheat_vehicle_air_brake_set( 0 );
 			cheat_state_text( "Air brake" );
 		}
@@ -217,9 +230,10 @@ void cheat_hook ( HWND wnd )
 	{
 		if ( vehicle_info == nullptr )
 		{
-			if (BlackLightFuncs->bAirbreakVehicle)
+			if (BlackLightFuncs->bAirbreakVehicle  || cheat_state->vehicle.stick)
 			{
 				cheat_vehicle_air_brake_set( 0 );
+				cheat_state->vehicle.stick = 0;
 				cheat_state_text( "Air brake / stick disabled" );
 			}
 
@@ -234,9 +248,10 @@ void cheat_hook ( HWND wnd )
 		}
 		else
 		{
-			if (BlackLightFuncs->bAirbreakPlayer)
+			if (BlackLightFuncs->bAirbreakPlayer || cheat_state->actor.stick)
 			{
 				BlackLightFuncs->bAirbreakPlayer = 0;
+				cheat_state->actor.stick = 0;
 				cheat_state_text( "Air brake / stick disabled" );
 			}
 
@@ -314,6 +329,8 @@ void cheat_hook ( HWND wnd )
 
 		cheat_handle_checkpoint();
 
+		syncronisations_settings->Hook();
+		God_of_Cars_hook();
 		pBlackLightMods->BlackLight_InitMods();
 
 		// do stuff :p

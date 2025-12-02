@@ -149,6 +149,7 @@ typedef struct _MATRIX4X4
 
 struct cheat_state_actor
 {
+	int stick;
 	float	coords[3];
 	int		invulnerable;
 	int		air_brake_slowmo;
@@ -163,6 +164,7 @@ struct cheat_state_actor
 
 struct cheat_state_vehicle
 {
+	int stick;
 	float	    coords[3];
 	int		invulnerable;
 	int		air_brake_slowmo;

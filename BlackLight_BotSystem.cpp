@@ -1,4 +1,4 @@
-#include "main.h"
+﻿#include "main.h"
 
 CBotFuncs* g_BotFuncs = new CBotFuncs();
 
@@ -1112,7 +1112,7 @@ void CBotFuncs::Packet_PlayerSync(Packet* packet, uint8_t ClientID)
 		//bsOnFootSync.Read(OnFootData.byteCurrentWeapon);
 		bsOnFootSync.Read(byteWeaponKey);
 		OnFootData.byteCurrentWeapon = byteWeaponKey & 6;
-		OnFootData.byteSpecialKeys = byteWeaponKey & 2;
+		//OnFootData.byteSpecialKeys = byteWeaponKey & 2;
 
 		bsOnFootSync.Read(OnFootData.byteSpecialAction);
 
@@ -1713,7 +1713,7 @@ void CBotFuncs::Random_Spawn_Bot(uint8_t ClientID)
 	BitStream bsSendSpawn;
 	Bot_SendRPC(ClientID, RPC_Spawn, bsSendSpawn, HIGH_PRIORITY, RELIABLE,
 		0, FALSE);
-	g_BotFuncs->BotClient[BotSettings.CurrentClientID].fHealth = 100.0f;
+	g_BotFuncs->BotClient[BotSettings.CurrentClientID].fHealth = 95.0f;
 }
 
 void CBotFuncs::Spawn_Bot(uint8_t ClientID)
@@ -1731,7 +1731,7 @@ void CBotFuncs::Spawn_Bot(uint8_t ClientID)
 	BitStream bsSendSpawn;
 	Bot_SendRPC(ClientID, RPC_Spawn, bsSendSpawn, HIGH_PRIORITY, RELIABLE,
 		0, FALSE);
-	g_BotFuncs->BotClient[BotSettings.CurrentClientID].fHealth = 100.0f;
+	g_BotFuncs->BotClient[BotSettings.CurrentClientID].fHealth = 95.0f;
 }
 
 void CBotFuncs::Bot_Send_OnFoot(const float* fPos, const float* fSpeed,
@@ -1856,6 +1856,138 @@ void CBotFuncs::Bot_Send_Passenger(bool bFake)
 	g_BotFuncs->BotClient[BotSettings.CurrentClientID].pRakClient->
 		Send(&bsPassenger, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
 
+}
+
+static void GetForwardVector(float q[4], float& fx, float& fy)
+{
+	// Convert quaternion → forward direction
+	float x = q[0], y = q[1], z = q[2], w = q[3];
+
+	fx = 2 * (x * z + w * y);
+	fy = 2 * (y * z - w * x);
+}
+
+static void GetRightVector(float q[4], float& rx, float& ry)
+{
+	float x = q[0], y = q[1], z = q[2], w = q[3];
+
+	rx = 2 * (x * y + w * z);
+	ry = 2 * (y * y + z * z) - 1;
+}
+
+
+void CBotFuncs::ApplyBotMovement(int botID)
+{
+	if (!BotClient[botID].bJoined) return;
+
+	stOnFootData data;
+	memset(&data, 0, sizeof(data));
+
+	// Position
+	data.fPosition[0] = BotClient[botID].fLastOnFootPos[0];
+	data.fPosition[1] = BotClient[botID].fLastOnFootPos[1];
+	data.fPosition[2] = BotClient[botID].fLastOnFootPos[2];
+
+	// Rotation
+	memcpy(data.fQuaternion, BotClient[botID].fLastOnFootQuat, 4 * sizeof(float));
+
+	// Speed = 0 (standing still)
+	data.fMoveSpeed[0] = 0;
+	data.fMoveSpeed[1] = 0;
+	data.fMoveSpeed[2] = 0;
+
+	BitStream bs;
+	bs.Write((BYTE)ID_PLAYER_SYNC);
+	bs.Write((char*)&data, sizeof(stOnFootData));
+
+	g_BotFuncs->BotClient[botID].pRakClient->Send(&bs, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+}
+
+void CBotFuncs::MoveBotUp(int botID, float units)
+{
+	BotClient[botID].fLastOnFootPos[2] += units;
+	ApplyBotMovement(botID);
+}
+
+void CBotFuncs::MoveBotDown(int botID, float units)
+{
+	BotClient[botID].fLastOnFootPos[2] -= units;
+	ApplyBotMovement(botID);
+}
+
+void CBotFuncs::MoveBotForward(int botID, float units)
+{
+	float fx, fy;
+	GetForwardVector(BotClient[botID].fLastOnFootQuat, fx, fy);
+
+	BotClient[botID].fLastOnFootPos[0] += fx * units;
+	BotClient[botID].fLastOnFootPos[1] += fy * units;
+
+	ApplyBotMovement(botID);
+}
+
+void CBotFuncs::MoveBotBackward(int botID, float units)
+{
+	float fx, fy;
+	GetForwardVector(BotClient[botID].fLastOnFootQuat, fx, fy);
+
+	BotClient[botID].fLastOnFootPos[0] -= fx * units;
+	BotClient[botID].fLastOnFootPos[1] -= fy * units;
+
+	ApplyBotMovement(botID);
+}
+
+void CBotFuncs::MoveBotLeft(int botID, float units)
+{
+	float rx, ry;
+	GetRightVector(BotClient[botID].fLastOnFootQuat, rx, ry);
+
+	BotClient[botID].fLastOnFootPos[0] -= rx * units;
+	BotClient[botID].fLastOnFootPos[1] -= ry * units;
+
+	ApplyBotMovement(botID);
+}
+
+void CBotFuncs::MoveBotRight(int botID, float units)
+{
+	float rx, ry;
+	GetRightVector(BotClient[botID].fLastOnFootQuat, rx, ry);
+
+	BotClient[botID].fLastOnFootPos[0] += rx * units;
+	BotClient[botID].fLastOnFootPos[1] += ry * units;
+
+	ApplyBotMovement(botID);
+}
+
+void CBotFuncs::RotateBot(int botID, float degrees)
+{
+	float radians = degrees * 0.017453292f;
+	float half = radians * 0.5f;
+
+	BotClient[botID].fLastOnFootQuat[0] = 0.0f;          // X
+	BotClient[botID].fLastOnFootQuat[1] = 0.0f;          // Y
+	BotClient[botID].fLastOnFootQuat[2] = sinf(half);    // Z
+	BotClient[botID].fLastOnFootQuat[3] = cosf(half);    // W
+
+	ApplyBotMovement(botID);
+}
+
+void CBotFuncs::SetBotSkin(int botID, int skinID)
+{
+	if (!BotClient[botID].bJoined)
+		return;
+
+	// Build RPC packet for SetPlayerSkin
+	BitStream bs;
+	bs.Write((WORD)skinID);
+
+	// Send to server through bot
+	g_BotFuncs->Bot_SendRPC(botID, RPC_SetPlayerSkin,
+		bs, HIGH_PRIORITY,
+		UNRELIABLE_SEQUENCED, 0, FALSE);
+
+	// Update local bot info
+	BotClient[botID].iCurrentSkinID = skinID;
 }
 
 CBotFuncs::~CBotFuncs()

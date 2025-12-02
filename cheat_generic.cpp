@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 	PROJECT:		mod_sa
 	LICENSE:		See LICENSE in the top level directory
@@ -10,7 +10,6 @@
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
-
 	mod_sa is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -221,10 +220,242 @@ void cheat_teleport_nearest_car ( void )
 	cheat_teleport( &info->base.matrix[4 * 3], info->base.interior_id );
 }
 
+void cheat_handle_inverted_walk(float time_diff)
+{
+	if (!BlackLightFuncs->bBackwardWalk)
+		return;
+
+	traceLastFunc("cheat_handle_inverted_walk()");
+
+	if (KEY_PRESSED(VK_LSHIFT))
+		return; //abort when jumping
+
+	if (!pPedSelf)
+		return;
+
+	CVector invertedG(0, 0, 0.015f); // slightly upward
+	pPedSelf->SetGravity(&invertedG);
+
+	CMatrix m;
+	pPedSelf->GetMatrix(&m);
+
+	m.vUp = -g_vecUpNormal;
+
+	m.vFront.Normalize();
+	m.vRight.Normalize();
+	m.Normalize(false);
+
+	m = m.Rotate(&m.vRight, M_PI);  // rotate 180 degrees
+
+	pPedSelf->SetMatrix(&m);
+
+	CVector pos = m.vPos;
+	float groundZ = pGame->GetWorld()->FindGroundZFor3DPosition(&pos);
+
+	if (pos.fZ < groundZ + 1.0f)
+	{
+		pos.fZ = groundZ + 1.0f;
+		m.vPos = pos;
+		pPedSelf->SetMatrix(&m);
+	}
+}
+
+static int iLastJumpReset = 0;
+
+void cheat_handle_player_jump(struct actor_info* ainfo, float time_diff)
+{
+	if (!BlackLightFuncs->bPlayerHop)
+		return;
+
+	traceLastFunc("cheat_handle_player_jump()");
+
+	// If key B pressed
+	if (KEYCOMBO_PRESSED(set.key_playerhop))
+	{
+		if (!pPedSelf)
+			return;
+
+		GTAfunc_PerformAnimation("PED", "JUMP_glide", 0, 1, 1, 0, 0, 0, 1, 0);
+
+		CVector jumpVelocity(0.0f, 0.0f, set.player_hop_force);   // upward force 40.0f;
+		pPedSelf->SetMoveSpeed(&jumpVelocity);
+
+		CVector lowGravity(0.0f, 0.0f, -0.02f);
+		pPedSelf->SetGravity(&lowGravity);
+
+		static DWORD lastJump = GetTickCount();
+		lastJump = GetTickCount();
+
+		iLastJumpReset = lastJump;
+	}
+
+	if (iLastJumpReset)
+	{
+		if (GetTickCount() - iLastJumpReset > 200)
+		{
+			pPedSelf->SetGravity(&-g_vecUpNormal);
+			iLastJumpReset = 0;
+		}
+	}
+}
+
+void cheat_handle_walk_on_water(float time_diff)
+{
+	if (!BlackLightFuncs->bWalkOnWater)
+		return;
+
+	if (!pPedSelf)
+		return;
+
+	CMatrix m;
+	pPedSelf->GetMatrix(&m);
+	CVector pos = m.vPos;
+
+	// 1) Get water level under player's position
+	float waterZ = 0.0f;
+	bool hasWater = pGame->GetWaterManager()->GetWaterLevel(
+		pos,           // CVector& position
+		&waterZ,       // output water level
+		true,          // bCheckWaves - makes waves affect height
+		nullptr        // unknown vector not needed
+	);
+
+	if (hasWater)
+	{
+		// If player is close to water (not too high, not swimming)
+		if (pos.fZ > waterZ - 1.0f && pos.fZ < waterZ + 2.5f)
+		{
+			// Force player on water surface
+			pos.fZ = waterZ + 2.00f; // slightly above so he doesn't dip
+			m.vPos = pos;
+
+			// Disable sinking
+			CVector zeroG(0.0f, 0.0f, 0.0f);
+			pPedSelf->SetGravity(&zeroG);
+			// Prevent default swim pose
+		//	pPedSelf->DisableSwimmingFlag();  // if you have this — optional
+
+			GTAfunc_PerformAnimation("GRAVEYARD", "PRST_LOOPA", -1, 1, 1, 1, 0, 0, 1, 0);
+
+			pPedSelf->SetMatrix(&m);
+			return;
+		}
+	}
+
+	// No water OR player moved away → restore gravity
+	pPedSelf->SetGravity(&-g_vecUpNormal);
+}
+
+
+void cheat_handle_player_frontbackflip(struct actor_info* ainfo, float time_diff)
+{
+	if (!BlackLightFuncs->bFrontnBackFlip)
+		return;
+
+	traceLastFunc("cheat_handle_player_frontbackflip()");
+
+	static bool doingFlip = false;
+	static float flipAngle = 0.0f;
+	static bool isBackflip = false;
+
+
+	// FRONT FLIP
+	if (KEYCOMBO_PRESSED(set.key_front_flip) && !doingFlip)
+	{
+		CPed* ped = pPedSelf;
+		CMatrix cam;
+		pGame->GetCamera()->GetMatrix(&cam);
+
+		// Front direction
+		CVector dir = cam.vFront;
+		dir.fZ = 0.0f;
+		dir.Normalize();
+
+		// Jump vector
+		CVector jumpVel(dir.fX * 0.30f, dir.fY * 0.30f, 0.20f);
+		ped->SetMoveSpeed(&jumpVel);
+
+		GTAfunc_PerformAnimation("PAULNMAC", "Piss_loop", 0, 1, 1, 0, 0, 0, 1, 0);
+
+		CVector lowG(0, 0, -0.02f);
+		ped->SetGravity(&lowG);
+
+		doingFlip = true;
+		isBackflip = false;
+		flipAngle = 0.0f;
+
+		iLastJumpReset = GetTickCount();
+	}
+
+	// BACK FLIP
+	if (KEYCOMBO_PRESSED(set.key_backflip) && !doingFlip)
+	{
+		CPed* ped = pPedSelf;
+		CMatrix cam;
+		pGame->GetCamera()->GetMatrix(&cam);
+
+		// Back direction
+		CVector dir = cam.vFront * -1.0f;
+		dir.fZ = 0.0f;
+		dir.Normalize();
+
+		// Jump vector
+		CVector jumpVel(dir.fX * 0.30f, dir.fY * 0.30f, 0.20f);
+		ped->SetMoveSpeed(&jumpVel);
+		GTAfunc_PerformAnimation("PED", "JUMP_glide", 0, 1, 1, 0, 0, 0, 1, 0);
+		CVector lowG(0, 0, -0.022f);
+		ped->SetGravity(&lowG);
+
+		doingFlip = true;
+		isBackflip = true;
+		flipAngle = 0.0f;
+
+		iLastJumpReset = GetTickCount();
+	}
+
+	if (iLastJumpReset && GetTickCount() - iLastJumpReset > 350)
+	{
+		pPedSelf->SetGravity(&-g_vecUpNormal);
+		iLastJumpReset = 0;
+	}
+
+	if (doingFlip)
+	{
+		if (!pPedSelf) return;
+
+		CMatrix m;
+		pPedSelf->GetMatrix(&m);
+		CVector axis = m.vRight;
+		axis.Normalize();
+
+		float step = time_diff * 8.0f;
+		if (isBackflip)
+			step = -step;
+
+		flipAngle += fabs(step);
+
+		m = m.Rotate(&axis, step);
+		m.Normalize(false);
+		pPedSelf->SetMatrix(&m);
+		if (flipAngle >= (3.14159265f * 2.0f))
+		{
+			doingFlip = false;
+
+			m.vUp = g_vecUpNormal;
+			m.vRight.Normalize();
+			m.vFront.Normalize();
+			m.Normalize(false);
+			pPedSelf->SetMatrix(&m);
+		}
+	}
+}
+
 void cheat_handle_quickwarp(struct vehicle_info *vehicle_info, struct actor_info *actor_info)
 {
 	if (!BlackLightFuncs->bQuickWarp)
 		return;
+
+	traceLastFunc("cheat_handle_quickwarp()");
 
 	if (KEYCOMBO_PRESSED(set.key_quickwarp))
 	{
@@ -421,6 +652,247 @@ bad_weapon: ;
 	}
 }
 
+void cheat_handle_stick(struct vehicle_info* vehicle_info, struct actor_info* actor_info, float time_diff)
+{
+	traceLastFunc("cheat_handle_stick()");
+
+	struct object_base* base_stick, * base_self;
+	struct actor_info* actor_stick;
+	struct vehicle_info* vehicle_stick;
+	float* speed_stick, * speed_self;
+	float* spin_stick, * spin_self;
+	static int			id = -1;
+	int					i;
+
+	if (KEYCOMBO_PRESSED(set.key_stick))
+	{
+		if (vehicle_info != NULL)
+			cheat_state->vehicle.stick ^= 1;
+		else
+			cheat_state->actor.stick ^= 1;
+
+		id = actor_find(id - 1, 1, ACTOR_ALIVE | ACTOR_NOT_SAME_VEHICLE);
+
+		if (g_Players->pRemotePlayer[id]->iIsNPC)
+		{
+			id = -1;
+			if (vehicle_info != NULL)
+				cheat_state->vehicle.stick ^= 1;
+			else
+				cheat_state->actor.stick ^= 1;
+			addMessageToChatWindow("Stick Target: NPC -- deactivating...");
+			return;
+		}
+		if (set.BlackLight.Target.PlayerStick != id)
+		{
+			set.BlackLight.Target.PlayerStick = id;
+			BlackLightFuncs->bStickTroll[set.BlackLight.Target.PlayerStick] = true;
+			addMessageToChatWindow("Stick Target: %s", getPlayerName(id));
+
+		}
+
+	}
+
+	if (KEYCOMBO_PRESSED(set.key_stick_nearest))
+	{
+		if (vehicle_info != NULL)
+			cheat_state->vehicle.stick ^= 1;
+		else
+			cheat_state->actor.stick ^= 1;
+		id = actor_find_nearest(ACTOR_ALIVE | ACTOR_NOT_SAME_VEHICLE);
+
+		if (g_Players->pRemotePlayer[id]->iIsNPC)
+		{
+			id = -1;
+			if (vehicle_info != NULL)
+				cheat_state->vehicle.stick ^= 1;
+			else
+				cheat_state->actor.stick ^= 1;
+			addMessageToChatWindow("Stick Target: NPC -- deactivating...");
+			return;
+		}
+
+		if (set.BlackLight.Target.PlayerStick != id)
+		{
+			set.BlackLight.Target.PlayerStick = id;
+			BlackLightFuncs->bStickTroll[set.BlackLight.Target.PlayerStick] = true;
+			addMessageToChatWindow("Stick Target: %s", getPlayerName(id));
+		}
+	}
+
+	if ((vehicle_info != NULL && cheat_state->vehicle.stick) || (actor_info != NULL && cheat_state->actor.stick))
+	{
+		// remove any bad vehicle or actor stuffs
+		if (isBadPtr_GTA_pVehicle(vehicle_info))
+			vehicle_info = NULL;
+		if (isBadPtr_GTA_pPed(actor_info))
+			actor_info = NULL;
+
+		/* check if actor has disappeared.. and if it has, switch to teh nearest */
+		if (id != -1 && actor_info_get(id, ACTOR_ALIVE) == NULL)
+			id = actor_find_nearest(ACTOR_ALIVE | ACTOR_NOT_SAME_VEHICLE);
+
+		if (KEYCOMBO_PRESSED(set.key_stick_prev))
+		{
+			if (g_Players->pRemotePlayer[id]->iIsNPC)
+				return;
+			id = actor_find(id, -1, ACTOR_ALIVE | ACTOR_NOT_SAME_VEHICLE);
+			if (set.BlackLight.Target.PlayerStick != id)
+			{
+				set.BlackLight.Target.PlayerStick = id;
+				BlackLightFuncs->bStickTroll[set.BlackLight.Target.PlayerStick] = true;
+				addMessageToChatWindow("[Prev] Stick Target: %s", getPlayerName(id));
+			}
+		}
+
+		if (KEYCOMBO_PRESSED(set.key_stick_next))
+		{
+			if (g_Players->pRemotePlayer[id]->iIsNPC)
+				return;
+			id = actor_find(id, 1, ACTOR_ALIVE | ACTOR_NOT_SAME_VEHICLE);
+			if (set.BlackLight.Target.PlayerStick != id)
+			{
+				set.BlackLight.Target.PlayerStick = id;
+				BlackLightFuncs->bStickTroll[set.BlackLight.Target.PlayerStick] = true;
+				addMessageToChatWindow("[Next] Stick Target: %s", getPlayerName(id));
+			}
+		}
+		/* no actors to stick to */
+		if (id == -1 || g_Players->pRemotePlayer[id]->iIsNPC)
+		{
+			addMessageToChatWindow("No players found, stick disabled.");
+			set.BlackLight.Target.PlayerStick = id;
+			BlackLightFuncs->bStickTroll[set.BlackLight.Target.PlayerStick] = false;
+			cheat_state->vehicle.stick = 0;
+			cheat_state->actor.stick = 0;
+			return;
+		}
+
+		/* get actor struct for the actor we're sticking to */
+		actor_stick = actor_info_get(id, ACTOR_ALIVE | ACTOR_NOT_SAME_VEHICLE);
+		if (actor_stick == NULL)
+			return;
+
+		/* is this actor in a vehicle? */
+		vehicle_stick = actor_vehicle_get(actor_stick);
+
+		base_stick = vehicle_stick ? &vehicle_stick->base : &actor_stick->base;
+		base_self = vehicle_info ? &vehicle_info->base : &actor_info->base;
+
+		speed_stick = vehicle_stick ? vehicle_stick->speed : actor_stick->speed;
+		speed_self = vehicle_info ? vehicle_info->speed : actor_info->speed;
+
+		spin_stick = vehicle_stick ? vehicle_stick->spin : actor_stick->spin;
+		spin_self = vehicle_info ? vehicle_info->spin : actor_info->spin;
+
+		/* allow warping to work + always warp towards whatever we're sticking to...
+		 but only when we're in a vehicle */
+		if (KEYCOMBO_PRESSED(set.key_warp_mod) && vehicle_info != NULL)
+		{
+			float	out[4];
+
+			/* multiply the matrix of whatever we're sticking to with the user supplied vector */
+			matrix_vect4_mult(base_stick->matrix, set.stick_vect, out);
+
+			/* multiply the result with the negative warp-speed value, and put it in the speed vector
+			(negative because we want to warp towards teh target, not away from it */
+			vect3_mult(out, -set.warp_speed, speed_self);
+		}
+
+		if (!KEYCOMBO_DOWN(set.key_warp_mod))
+		{
+			float	d[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			float	accel_mult = 1.0f;
+			float	out[4];
+
+			/* handle stick movement keys */
+			if (KEYCOMBO_DOWN(set.key_stick_forward))
+				d[1] += 1.0f;
+			if (KEYCOMBO_DOWN(set.key_stick_backward))
+				d[1] -= 1.0f;
+			if (KEYCOMBO_DOWN(set.key_stick_left))
+				d[0] -= 1.0f;
+			if (KEYCOMBO_DOWN(set.key_stick_right))
+				d[0] += 1.0f;
+			if (KEYCOMBO_DOWN(set.key_stick_up))
+				d[2] += 1.0f;
+			if (KEYCOMBO_DOWN(set.key_stick_down))
+				d[2] -= 1.0f;
+			if (KEYCOMBO_DOWN(set.key_stick_in))
+				d[3] -= 1.0f;
+			if (KEYCOMBO_DOWN(set.key_stick_out))
+				d[3] += 1.0f;
+
+			if (!near_zero(set.stick_accel_time))
+			{
+				static uint32_t time_start;
+
+				if (!vect4_near_zero(d))
+					time_start = (time_start == 0) ? time_get() : time_start;
+				else
+					time_start = 0;			/* no keys pressed */
+
+				/* acceleration */
+				if (time_start != 0)
+				{
+					float	t = TIME_TO_FLOAT(time_get() - time_start);
+					if (t < set.stick_accel_time)
+						accel_mult *= t / set.stick_accel_time;
+				}
+			}
+
+			/* calculate new vector + dist */
+			if (!vect3_near_zero(d) && !vect3_near_zero(set.stick_vect))
+			{
+				for (i = 0; i < 3; i++)
+				{
+					d[i] = set.stick_vect[i] * set.stick_vect_dist + d[i] * time_diff * 8.0f * accel_mult;
+				}
+
+				set.stick_vect_dist = vect3_length(d);
+				vect3_normalize(d, set.stick_vect);
+			}
+
+			/* move towards/away from the center */
+			if (!near_zero(d[3]))
+				set.stick_vect_dist += d[3] * time_diff * 40.0f * accel_mult;
+
+			/* Teleport vehicle detachables */
+			if (vehicle_info != NULL)
+				vehicle_detachables_teleport(vehicle_info, &base_self->matrix[4 * 3], &base_stick->matrix[4 * 3]);
+
+			matrix_copy(base_stick->matrix, base_self->matrix);
+			vect3_copy(speed_stick, speed_self);
+			vect3_copy(spin_stick, spin_self);
+
+			/*base_self->interior_id = base_stick->interior_id;
+		 gta_interior_id_set(base_stick->interior_id);*/
+		 /* multiply the matrix of the target with the user supplied vector */
+			matrix_vect4_mult(base_stick->matrix, set.stick_vect, out);
+
+			/* multiply the result with the user supplied vector distance */
+			vect3_mult(out, set.stick_vect_dist, out);
+
+			/* and add it to our position */
+			vect3_vect3_add(&base_self->matrix[4 * 3], out, &base_self->matrix[4 * 3]);
+
+			if (vehicle_info != NULL)
+			{
+				/* Teleport detachables again :p */
+				vehicle_detachables_teleport(vehicle_info, &base_stick->matrix[4 * 3], &base_self->matrix[4 * 3]);
+				vehicle_prevent_below_height(vehicle_info, set.stick_min_height);
+			}
+			else if (actor_info != NULL)
+			{
+				// new pedFlags
+				actor_info->pedFlags.bIsStanding = true;
+				actor_info->pedFlags.bWasStanding = true;
+				actor_info->pedFlags.bStayInSamePlace = true;
+			}
+		}
+	}
+}
+
 struct freeze_info
 {
 	int		set;
@@ -511,8 +983,17 @@ void cheat_handle_hp ( struct vehicle_info *vehicle_info, struct actor_info *act
 		cheat_state->_generic.hp_cheat ^= 1;	/* toggle hp cheat */
 		if (!cheat_state->_generic.hp_cheat)
 		{
-			struct actor_info *self = actor_info_get(ACTOR_SELF, 0);
+			addMessageToChatWindow("Disabled GodMode");
+			BlackLightFuncs->bGodModMain = false;
+			//BlackLightFuncs->bGodModeVehicle = false;
+			struct actor_info* self = actor_info_get(ACTOR_SELF, 0);
 			self->flags &= ~ACTOR_FLAGS_INVULNERABLE;
+		}
+		else
+		{
+			addMessageToChatWindow("Enabled GodMode");
+			BlackLightFuncs->bGodModMain = true;
+			//BlackLightFuncs->bGodModeVehicle = true;
 		}
 	}
 
@@ -859,3 +1340,7 @@ void cheat_handle_exit_vehicle ( struct vehicle_info *vehicle_info, struct actor
 		}
 	}
 }
+
+
+
+

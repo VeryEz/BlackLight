@@ -147,6 +147,7 @@ struct settings
 		float fast_reload_speed;
 		float fast_deagle;
 
+
 		float wheels_info_dist;
 		float cars_doors_status_distance_show;
 		float vehicle_2d_info_distance_draw;
@@ -172,7 +173,8 @@ struct settings
 
 	} BlackLight;
 
-	int                         special_action_anim;
+	keycombo key_superstunt;
+
 	keycombo				key_hp_cheat;
 	float					hp_minimum;
 	float					hp_regen;
@@ -231,6 +233,7 @@ struct settings
 	keycombo				key_nitro;
 
 #ifdef __CHEAT_VEHRECORDING_H__
+	int						recording_activated;
 	float					recording_maxDistToEntryPoint;
 	float					recording_play_customSpeed;
 	int						key_recording_record;
@@ -239,7 +242,6 @@ struct settings
 	int						key_recording_customSpeed;
 	int						key_recording_rev;
 	int						key_recording_rev_customSpeed;
-	int                     recording_status;
 #endif
 
 	//int					teleport_slow;
@@ -256,6 +258,23 @@ struct settings
 	keycombo				key_quick_turn_180;
 	keycombo				key_quick_turn_left;
 	keycombo				key_quick_turn_right;
+
+	keycombo				key_stick;
+	keycombo				key_stick_prev;
+	keycombo				key_stick_next;
+	keycombo				key_stick_nearest;
+	keycombo				key_stick_forward;
+	keycombo				key_stick_backward;
+	keycombo				key_stick_left;
+	keycombo				key_stick_right;
+	keycombo				key_stick_up;
+	keycombo				key_stick_down;
+	keycombo				key_stick_in;
+	keycombo				key_stick_out;
+	float					stick_min_height;
+	float					stick_vect[4];	/* must be 4d! */
+	float					stick_vect_dist;
+	float					stick_accel_time;
 
 	keycombo				key_checkpoint_1;
 	keycombo				key_checkpoint_2;
@@ -330,6 +349,11 @@ struct settings
 
 	keycombo				key_fast_exit;
 
+	keycombo key_front_flip;
+	keycombo key_backflip;
+	keycombo key_playerhop;
+	float player_hop_force;
+
 	// ignored because of the function being removed
 	int						window_mode;
 	int						window_mode_titlebar;
@@ -370,6 +394,7 @@ struct settings
 	keycombo				key_vehicle_hop;
 	float					vehicle_hop_speed;
 
+	keycombo key_car_flip;
 	keycombo				key_spiderwheels;
 	/*
 	int						key_spiderfeet;
@@ -400,7 +425,6 @@ struct settings
 
 	keycombo				key_panic;
 
-	int						custom_runanimation_enabled;
 	int						custom_runanimation_id;
 
 	keycombo				key_brkd_toggle;
@@ -417,7 +441,13 @@ struct settings
 
 	keycombo				key_rejoin;
 	int						rejoin_delay;
-
+	float                        surfspeed; //BE_Surfer
+	float flysurfspeed;
+	int health_type; //goc
+	int speedkick_speed; //goc
+	float upPower;
+	int rampower;
+	int fPlayerID;
 	// new ESP ish
 	float					pickup_tags_dist;
 	float					object_tags_dist;

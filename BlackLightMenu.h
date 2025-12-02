@@ -2,7 +2,9 @@
 
 extern ImVec4 ImColorRed, ImColorGreen, ImColorOrange,
 ImColorBanana, ImColorTransparentBlack, ImColorDeepOrange,
-ImColorWhite, ImColorNone, ImColorAqua, ImColorBlue;
+ImColorWhite, ImColorNone;
+
+extern ImVec4 goc_MainFuncs_border, goc_FakerFuncs_border, goc_Syncs_border;
 
 extern int menus, inner_menus;
 enum eMenus
@@ -19,6 +21,11 @@ enum eMenus
 	MENU_COMMANDS,
 	MENU_SETTINGS,
 	MENU_CREDITS
+};
+
+enum eMenusGoc
+{
+	MENU_VEHICLE_GOC = 12
 };
 
 enum eMenusAddon
@@ -50,6 +57,7 @@ enum eRadioMenus
 
 enum eMenusPlayer
 {
+	MENU_PLAYER_STICKMOD = 44,
 	MENU_PLAYER_FAST_ANIMS = 45,
 	MENU_PLAYER_WEAPONS = 46,
 	MENU_PLAYER_TARGET_FUNCS = 47, //eMenusTargetTroll
@@ -60,8 +68,7 @@ enum eMenusPlayer
 	MENU_PLAYER_WARP = 52,
 	MENU_PLAYER_TELEPORT_TO_VEHICLE = 53,
 	MENU_PLAYER_WARP_VEHICLE_TO_ME = 54,
-	MENU_PLAYER_DEATHMATCH = 55,
-	MENU_PLAYER_ANIMS = 56
+	MENU_PLAYER_DEATHMATCH = 55
 };
 
 enum eMenusTargetTroll
@@ -76,7 +83,9 @@ enum eMenusTargetTroll
 
 enum eBotMenus
 {
-	MENU_BOT_TROLL_SET_TARGET = 80
+	MENU_BOT_TROLL_SET_TARGET = 80,
+	MENU_BOT_FIND_VEHICLES = 81,
+	MENU_BOTS_CONNECTED = 82
 };
 
 enum eMenusSettings
@@ -85,14 +94,6 @@ enum eMenusSettings
 	MENU_SETTINGS_GAMESTATE = 101,
 };
 
-enum eMenuVehicle
-{
-	MENU_VEH_ROUTE_RECORDING = 200,
-	MENU_VEH_HANDLING = 201,
-	MENU_VEH_WARP_VEHICLES = 202,
-	MENU_VEH_VEHICLE_TUNING = 203,
-	MENU_VEHROUTE_SAVED_RECORDINGS = 204
-};
 
 enum eMenusInfo //used by int inner_menus in BlackLightMenu.cpp
 {
@@ -140,8 +141,6 @@ public:
 	void ImBlackLightHud(bool bEnable); //works
 	void ImFriendsAndAdminsMenu(bool bEnable); //works
 	void ImScoreboard(bool bEnable);
-	void ImInitBlackLight_AudioStreamPlayer(bool bEnable);
-	void ImMenuInit_RouteRecording(bool bEnable);
 
 	//ImGui ESP Menus
 	void ImInitBlackLightPlayersTags(bool bEnable); //works
@@ -149,7 +148,10 @@ public:
 	void ImInitBlakcLightRadioVolume(bool bEnable); //works
 	void ImInitBlackLight_NewSpeedometer(bool bEnable);
 	void ImInitBlackLight_DamagerMenu(void);
-	void ImInitBlackLight_BotInfoIDMenu(bool bEnable);
+	void ImInitBlackLight_GoCMenu(void);
+	//void ImInitBlackLight_BotInfoIDMenu(bool bEnable);
+	void ImInitBlackLight_RenderBotUI3D(void);
+
 
 	int GetLastMenu(void);
 	int GetCurrentMenu(void);

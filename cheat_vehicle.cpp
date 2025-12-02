@@ -1713,6 +1713,46 @@ void cheat_vehicle_setGravity ( CVehicle *cveh, CVector pvecGravity )
 	//5:08:18 PM lol cool
 }
 
+void cheat_handle_vehicle_autoFlip(struct vehicle_info* info, float time_diff)
+{
+	if (!BlackLightFuncs->bCarHardFlip)
+		return;
+
+	// Key to trigger flip (your custom)
+	if (!KEYCOMBO_PRESSED(set.key_car_flip))
+		return;
+
+	// Only driver can flip own vehicle
+	if (!pSampMulti->IsPlayerDriver(g_Players->sLocalPlayerID))
+		return;
+
+	for (vehicle_info* temp = info; temp != NULL; temp = temp->trailer)
+	{
+		if (!temp) return;
+
+		CVehicle* cveh = pGameInterface->GetPools()->GetVehicle((DWORD*)temp);
+		if (!cveh) continue;
+
+		// check if upside down or on side
+		if (!cveh->IsUpsideDown() && !cveh->IsOnItsSide())
+			continue;
+
+		// stop motion to avoid wild physics
+		temp->m_SpeedVec.Zero();
+		temp->m_SpinVec.Zero();
+		memset(temp->speed_rammed, 0, sizeof(temp->speed_rammed));
+		memset(temp->spin_rammed, 0, sizeof(temp->spin_rammed));
+
+		// restore orientation
+		cveh->PlaceAutomobileOnRoadProperly();
+
+		// trailer handling
+		if (!cheat_state->vehicle.keep_trailer_attached || !BlackLightFuncs->bVehicleTrailerSupport)
+			break;
+	}
+}
+
+
 struct patch_set	*patchBikeFalloff_set = NULL;
 bool				m_SpiderWheels_falloffFound = false;
 bool				m_SpiderWheels_falloffEnabled = false;
@@ -1776,7 +1816,6 @@ void cheat_handle_vehicle_spiderWheels ( struct vehicle_info *vinfo, float time_
 
 			// get CVehicle
 			CVehicle			*cveh = pGameInterface->GetPools()->GetVehicle( (DWORD *)temp );
-
 			// update spider wheels
 			CVector				offsetVector = cheat_vehicle_getPositionUnder( cveh );
 

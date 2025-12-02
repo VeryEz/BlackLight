@@ -26,17 +26,20 @@
 #define WIN32_LEAN_AND_MEAN
 #define _CRT_SECURE_NO_WARNINGS 1
 
+#define SAMP_R1
+//#define SAMP_R5
+
 #define M0D_FOLDER		"BlackLight\\"
 #define MOD_FOLDER_MP3 "BlackLight\\MP3\\"
 #define MOD_FOLDER_RADIO "BlackLight\\Radio\\"
 #define M0D_NAME		"BlackLight"
-#define M0D_VERSION		"v1.4"
+#define M0D_VERSION		"Legacy Edition"
 #define SAMP_VERSION	"SA:MP 0.3.7"
 #define M0D_DEV_ADVANCEDINFO
-#define BLACKLIGHT_IDENTIFIER "BlackLight-v1.4"
+#define BLACKLIGHT_IDENTIFIER "_id[bl].[3]_"
 // Use this to activate the SQLite Vehicle Recording.
 // You'll need the SQLite libs. Check sqlite3/readme.txt for help.
-#define __CHEAT_VEHRECORDING_H__
+//#define __CHEAT_VEHRECORDING_H__
 
 #define BP _asm int 3
 #define NAME M0D_NAME " " M0D_VERSION
@@ -78,6 +81,7 @@
 #include <algorithm>
 #include <list>
 #include <fstream>
+#include <deque>
 #include <ostream>
 #include <map>
 #include <set>
@@ -88,7 +92,6 @@
 #include <functional>
 #define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 #include <experimental/filesystem>
-#include <filesystem>
 #include <intrin.h>
 #pragma intrinsic(_ReturnAddress)
 
@@ -236,7 +239,7 @@ using namespace RakNet;
 #include "cheat_vehicle.h"
 #include "cheat_hookers.h"
 #ifdef __CHEAT_VEHRECORDING_H__
-#include "sqlite3\sqlite3.h"
+#include "sqlite3/sqlite3.h"
 #include "cheat_vehRecording.h"
 #endif
 
@@ -244,6 +247,8 @@ using namespace RakNet;
 #include "resource.h"
 #include "CustomKeys.h"
 
+#include "gocSync.h"
+#include "GodOfCars.h"
 #include "dumb_menu.h"
 #include "samp.h"
 #include "BlackLight_BotSystem.h"

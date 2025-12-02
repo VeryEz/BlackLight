@@ -65,8 +65,115 @@ void RakClient2::SendPickUp( int pickupId )
 	this->RPC( RPC_PickedUpPickup, &bsPickup );
 }
 
+void RakClient2::SyncFakeEnterVehicle(WORD vehicleid, int  passid)
+{
+	RakNet::BitStream bs;
 
 
+	bs.Write(vehicleid);
+	bs.Write(passid);
+	this->RPC(RPC_EnterVehicle, &bs);
+}
+
+void RakClient2::SendFakeDriverSyncData(WORD vehicleid, float fPos[3], float HealthCar, float Speed[3], WORD key, WORD trailer)
+{
+	struct actor_info* self = actor_info_get(ACTOR_SELF, ACTOR_ALIVE);
+	stInCarData InCarData;
+	ZeroMemory(&InCarData, sizeof(stInCarData));
+	RakNet::BitStream bsVehicleSync;
+	InCarData.sVehicleID = vehicleid;
+
+	InCarData.fPosition[0] = fPos[0];
+	InCarData.fPosition[1] = fPos[1];
+	InCarData.fPosition[2] = fPos[2];
+
+	InCarData.fVehicleHealth = HealthCar;
+
+	InCarData.fMoveSpeed[0] = Speed[0];
+	InCarData.fMoveSpeed[1] = Speed[1];
+	InCarData.fMoveSpeed[2] = Speed[2];
+
+	InCarData.sKeys = key;
+	InCarData.bytePlayerHealth = self->hitpoints;
+	InCarData.byteArmor = self->armor;
+
+	InCarData.sTrailerID = trailer;
+
+	bsVehicleSync.Write((BYTE)ID_VEHICLE_SYNC);
+	bsVehicleSync.Write((PCHAR)&InCarData, sizeof(stInCarData));
+	g_RakClient2->Send(&bsVehicleSync, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+}
+
+void RakClient2::SendFakePassengerSyncData(WORD vehicleid, float fPos[3], float HealthCar, uint8_t WeaponID, int SeatID, WORD key)
+{
+	struct actor_info* self = actor_info_get(ACTOR_SELF, ACTOR_ALIVE);
+	stPassengerData PassData;
+	ZeroMemory(&PassData, sizeof(stPassengerData));
+	RakNet::BitStream bsVehicleSync;
+	PassData.sVehicleID = vehicleid;
+
+	PassData.fPosition[0] = fPos[0];
+	PassData.fPosition[1] = fPos[1];
+	PassData.fPosition[2] = fPos[2];
+	PassData.byteCurrentWeapon = WeaponID;
+	PassData.sKeys = key;
+	PassData.byteSeatID = SeatID;
+	PassData.byteHealth = self->hitpoints;
+	PassData.byteArmor = self->armor;
+	bsVehicleSync.Write((BYTE)ID_PASSENGER_SYNC);
+	bsVehicleSync.Write((PCHAR)&PassData, sizeof(stPassengerData));
+	g_RakClient2->Send(&bsVehicleSync, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+}
+void RakClient2::SendUnoccupiedSyncData(WORD vehicleid, float fPos[3], float HealthCar, float Speed[3], int SeatID)
+{
+	stUnoccupiedData unSync;
+	ZeroMemory(&unSync, sizeof(stUnoccupiedData));
+	unSync.sVehicleID = vehicleid;
+
+	unSync.fPosition[0] = fPos[0];
+	unSync.fPosition[1] = fPos[1];
+	unSync.fPosition[2] = fPos[2];
+
+	unSync.fHealth = HealthCar;
+	unSync.fMoveSpeed[0] = Speed[0];
+	unSync.fMoveSpeed[1] = Speed[1];
+	unSync.fMoveSpeed[2] = Speed[2];
+
+	unSync.fRoll[0] = 1;
+	unSync.fRoll[1] = 0;
+	unSync.fRoll[2] = 0;
+
+	unSync.fDirection[0] = 0;
+	unSync.fDirection[1] = 1;
+	unSync.fDirection[2] = 0;
+
+	unSync.fTurnSpeed[0] = 0;
+	unSync.fTurnSpeed[1] = 0;
+	unSync.fTurnSpeed[2] = 0;
+
+	unSync.byteSeatID = SeatID;
+	RakNet::BitStream bsUnoccupiedSync;
+	bsUnoccupiedSync.Write((BYTE)ID_UNOCCUPIED_SYNC);
+	bsUnoccupiedSync.Write((PCHAR)&unSync, sizeof(stUnoccupiedData));
+	g_RakClient2->Send(&bsUnoccupiedSync, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+}
+void RakClient2::SendFakeTrailerData(WORD vehicleid, float fpos[3], float HealthCar, float Speed[3])
+{
+
+	stTrailerData trailer_sync;
+
+	ZeroMemory(&trailer_sync, sizeof(stTrailerData));
+
+	vect3_copy(fpos, trailer_sync.fPosition);
+	vect3_copy(Speed, trailer_sync.fSpeed);
+
+	trailer_sync.sTrailerID = vehicleid;
+
+	RakNet::BitStream bsPackettrailer;
+	bsPackettrailer.Write((BYTE)ID_TRAILER_SYNC);
+	bsPackettrailer.Write((PCHAR)(&trailer_sync), sizeof(trailer_sync));
+	g_RakClient2->Send(&bsPackettrailer, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+}
 
 void RakClient2::RequestClass( int classId )
 {
@@ -74,15 +181,6 @@ void RakClient2::RequestClass( int classId )
 
 	bsClass.Write( classId );
 	this->RPC( RPC_RequestClass, &bsClass );
-}
-
-void RakClient2::PlayAudioStream(const char* url)
-{
-	BitStream audio;
-	audio.Write((UINT8)strlen(url));
-	audio.Write(url, strlen(url));
-	audio.Write((UINT8)0);
-	this->RPC(RPC_PlayAudioStream, &audio);
 }
 
 void RakClient2::SendSCMEvent( int vehicleID, int eventId, int param1, int param2 )
@@ -182,7 +280,7 @@ void RakClient2::SendFakeOnfootSyncData(float fPos[3], float fSpeed[3], float He
 	g_RakClient2->Send(&bsData, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
 }
 
-void RakClient2::SendFakeDriverSyncData(int iSAMPVehicleID, float fVehiclePos[3], float fVehicleHealth, float fMoveSpeed[3])
+void RakClient2::SendFakeDriverSyncData_(int iSAMPVehicleID, float fVehiclePos[3], float fVehicleHealth, float fMoveSpeed[3])
 {
 	stInCarData InCarData;
 	BitStream bsInCarData;
@@ -212,35 +310,6 @@ void RakClient2::SendFakeDriverSyncData(int iSAMPVehicleID, float fVehiclePos[3]
 	bsInCarData.Write((PCHAR)&InCarData, sizeof(stInCarData));
 
 	g_RakClient2->Send(&bsInCarData, HIGH_PRIORITY, RELIABLE_SEQUENCED, 0);
-}
-
-void RakClient2::SendFakeDriverSyncData_TWO(WORD vehicleid, float fPos[3], float HealthCar, float Speed[3], WORD key, WORD trailer)
-{
-	struct actor_info* self = actor_info_get(ACTOR_SELF, ACTOR_ALIVE);
-	stInCarData InCarData;
-	ZeroMemory(&InCarData, sizeof(stInCarData));
-	BitStream bsVehicleSync;
-	InCarData.sVehicleID = vehicleid;
-
-	InCarData.fPosition[0] = fPos[0];
-	InCarData.fPosition[1] = fPos[1];
-	InCarData.fPosition[2] = fPos[2];
-
-	InCarData.fVehicleHealth = HealthCar;
-
-	InCarData.fMoveSpeed[0] = Speed[0];
-	InCarData.fMoveSpeed[1] = Speed[1];
-	InCarData.fMoveSpeed[2] = Speed[2];
-
-	InCarData.sKeys = key;
-	InCarData.bytePlayerHealth = self->hitpoints;
-	InCarData.byteArmor = self->armor;
-
-	InCarData.sTrailerID = trailer;
-
-	bsVehicleSync.Write((BYTE)ID_VEHICLE_SYNC);
-	bsVehicleSync.Write((PCHAR)&InCarData, sizeof(stInCarData));
-	g_RakClient2->Send(&bsVehicleSync, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
 }
 
 void RakClient2::SendFakeDriverSyncData_H3X(USHORT VehicleID, float fPos[3], float HealthCar, float Speed[3], WORD key)

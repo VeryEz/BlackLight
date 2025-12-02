@@ -25,7 +25,7 @@ struct stBot
 	float fLastOnFootQuat[4];
 	short sCurrentAnimationID;
 	uint8_t byteSpecialAction;
-
+	int iCurrentSkinID;
 	DWORD dwSendBulletTick;
 
 	float fHealth;
@@ -53,6 +53,8 @@ struct stBotSettings
 	int incrasePing;
 	bool UseFakeBot;
 	int ClassID;
+
+	int iVehicleID;
 
 	bool bFollow;
 	float fDistanceFollow;
@@ -121,6 +123,16 @@ public:
 	bool Bot_SendRPC(uint8_t ClientID, int iRPCID, BitStream Params, PacketPriority Priority, PacketReliability Reliability, char OrderingChannel, bool ShiftTimestamp);
 	void Bot_ReceiveRPC(RakClientInterface** pRakClient);
 
+	void SetBotSkin(int botID, int skinID);
+
+	void MoveBotUp(int botID, float units);
+	void MoveBotDown(int botID, float units);
+	void MoveBotLeft(int botID, float units);
+	void MoveBotRight(int botID, float units);
+	void MoveBotForward(int botID, float units);
+	void MoveBotBackward(int botID, float units);
+	void RotateBot(int botID, float degrees);
+	void ApplyBotMovement(int botID);
 private:
 	//RPC
 	void Packet_ConnectionAccepted(Packet* packet, uint8_t ClientID);

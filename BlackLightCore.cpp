@@ -1,4 +1,6 @@
-#include "main.h"
+ï»¿#include "main.h"
+#include <DirectXMath.h>
+//_=Gigant=_ was here 
 
 ImVec4 custom_color_car = ImVec4(0.13f, 0.41f, 0.71f, 1.00f)
 , custom_color_rb_sky = ImVec4(0.13f, 0.41f, 0.71f, 1.00f)
@@ -17,13 +19,22 @@ class CNewMods* pBlackLightMods;
 
 void StartUpFuncs(void)
 {
-	//memset(&BlackLightFuncs[0], 0, sizeof(stNewFunctions));
+	//memset(&BlackLightFuncs[0], 0, sizeof(stNewFunctions)); cant zero this for now
 
 	__MP3.mp3_volume = set.mp3_volume;
 	__MP3.bMP3LoopSong = set.loop_mp3_song;
 	__Radio.radio_volume = set.radio_volume;
 
-	BlackLightFuncs->Menu.bImVehRecording = true;
+	set.flysurfspeed = 0.5f;
+	set.surfspeed = 0.5f;
+	set.health_type = 2; //goc
+	set.speedkick_speed = 15;
+	set.upPower = 55.0f;
+	set.rampower = 10;
+
+	BlackLightFuncs->bAntiCarJack = true;
+	BlackLightFuncs->bCarRammer = false;
+	BlackLightFuncs->bVehicleWheelAim = false;
 //	BlackLightRemoteControl.bIsBlackLightUser[g_Players->sLocalPlayerID] = true;
 	//BlackLightRemoteControl.user_id = g_Players->sLocalPlayerID;
 	BlackLightFuncs->bUseNewScoreboard = set.new_scoreboard;
@@ -44,6 +55,7 @@ void StartUpFuncs(void)
 	BlackLightFuncs->bVehicleDisableFrame = set.disable_car_frame;
 	BlackLightFuncs->bMouseDrive = set.mouse_drive_enable;
 
+	BlackLightFuncs->bGodModMain = false;
 	BlackLightFuncs->bCustomRainbowColorSet = false;
 	BlackLightFuncs->bCustomColor_ESP = false;
 	BlackLightFuncs->bFakeAfk = false;
@@ -69,7 +81,11 @@ void StartUpFuncs(void)
 	BlackLightFuncs->bBikeWheelie = false;
 	BlackLightFuncs->bVehiclesFugga = false;
 	BlackLightFuncs->bPlayersElevator = false;
+	BlackLightFuncs->bSurfer = false;
+	BlackLightFuncs->bWalkOnWater = false;
 
+	BlackLightFuncs->bFrontnBackFlip = true;
+	BlackLightFuncs->bPlayerHop = false;
 	BlackLightFuncs->bRapidFire = false;
 	BlackLightFuncs->bDroneMode = false;
 	BlackLightFuncs->bFastCrosshair = false;
@@ -84,9 +100,10 @@ void StartUpFuncs(void)
 	BlackLightFuncs->bSkinChanger = false;
 	BlackLightFuncs->bTrailerTracers = false;
 	BlackLightFuncs->bVehicleWheelsVisibilityPulsator = false;
-	BlackLightFuncs->bCarHardFlip = false;
+	BlackLightFuncs->bCarHardFlip = true;
 	BlackLightFuncs->bVehicleQuickWarp = false;
 	BlackLightFuncs->bFreezePlayers = false;
+	BlackLightFuncs->bCustomRunAnim = false;
 
 	BlackLightFuncs->bWheelsInfo = false;
 	BlackLightFuncs->bCustomGravity = false;
@@ -95,16 +112,16 @@ void StartUpFuncs(void)
 	BlackLightFuncs->bViewAllAdmins = false;
 	BlackLightFuncs->bViewAllFriends = false;
 	BlackLightFuncs->bUsePlayersColor = true; //friends & admins list
-	BlackLightFuncs->bSpecialActionAnims = false;
+
+	BlackLightFuncs->bSpeedmeterBackground = false;
 
 	BlackLightFuncs->bFriendTags = true;
 	BlackLightFuncs->bAdminsTags = true;
 	BlackLightFuncs->Menu.bRadioVolume = true;
-	BlackLightFuncs->Menu.bImSAMPAudioStream = false; //menu
 	//BlackLightFuncs->bChangeGPCI = true;
 	BlackLightFuncs->bPlayersMap = false;
 	BlackLightFuncs->bWindowedMode = false;
-
+	BlackLightFuncs->bGoCfaker = false;
 
 	BlackLightFuncs->GtaHUD.bDisableMoney = false;
 	BlackLightFuncs->GtaHUD.bDisableHealthBar = false;
@@ -117,10 +134,30 @@ void StartUpFuncs(void)
 	BlackLightFuncs->GtaHUD.bDisableRadar = false;
 	BlackLightFuncs->GtaHUD.bDisabelAll = false;
 
+	BlackLightFuncs->bSilentInvis = false;
+	BlackLightFuncs->bWorldCollision = false;
+	BlackLightFuncs->bNoCollisionSurf = false;
+	BlackLightFuncs->bSurfer = false;
+	BlackLightFuncs->bFlySurf = false;
+
+	BlackLightFuncs->bPlayer3DBoxes = false;
+	BlackLightFuncs->bWheelESP = false;
+
+	syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_DEFAULT;
+	::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_DEFAULT");
+	::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: None");
+	::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "GoC Faker: OFF");
+	GoC->set.ignore_afk.enabled = true;
+	GoC->set.ignore_locked.enabled = true;
+	GoC->set.ignore_my_passagers.enabled = true;
+	GoC->set.ignore_driver.enabled = false;
+	GoC->set.incar_only.enabled = true;
+
 	for (int i = 0; i < SAMP_MAX_PLAYERS; i++)
 	{
 		BlackLightFuncs->_CopyChat.bCopyChat[i] = false;
 		BlackLightFuncs->bFuckTroll[i] = false;
+		BlackLightFuncs->bStickTroll[i] = false;
 		BlackLightFuncs->bSlapTroll[i] = false;
 		BlackLightFuncs->bPizdarvankaTarget[i] = false;
 		BlackLightFuncs->bTargetInfo[i] = false;
@@ -131,6 +168,8 @@ void StartUpFuncs(void)
 	__Damager.bShowInChat = false;
 	__Damager.bShowOnTarget = false;
 	__Damager.bEnableBackground = true;
+
+	GoC->faker_target = actor_find_nearest(ACTOR_ALIVE | ACTOR_NOT_SAME_VEHICLE);
 }
 
 void ImScoreboardCursor(bool bMenu)
@@ -314,6 +353,7 @@ void CNewMods::BlackLight_InitMods(void)
 	this->FastCrosshair(BlackLightFuncs->bFastCrosshair);
 	this->AntiStun(BlackLightFuncs->bNoStunV2);
 	this->AutoShoot(BlackLightFuncs->bAutoShoot);
+	this->AutoShootWheel(BlackLightFuncs->bVehicleWheelAim); //new
 	this->SampFastConnect(BlackLightFuncs->bSampFastConnect);
 	this->DisableWaterWaves(BlackLightFuncs->bDisableWaterWaves);
 	this->CustomTimeWeatherSet(BlackLightFuncs->bCustomTime, BlackLightFuncs->bCustomWeather);
@@ -325,6 +365,7 @@ void CNewMods::BlackLight_InitMods(void)
 	this->FollowTroll();
 	this->TargetSendBullets();
 	this->PlayerPulsators();
+	this->MoveAllNearbyVehicles_MASS(BlackLightFuncs->bPickVehiclesMass);
 	this->AutoScroll(BlackLightFuncs->bAutoScroll);
 	this->AutoCBug(BlackLightFuncs->bAutoCBug);
 	this->PickVehicle(BlackLightFuncs->bPickVehicle);
@@ -338,17 +379,17 @@ void CNewMods::BlackLight_InitMods(void)
 	this->PizdarvankaVehicle(BlackLightFuncs->bPizdarvankaVehicle);
 	this->FakeKillFlood(BlackLightFuncs->bFakeKillFlood);
 	this->FakeBulletsFlood(BlackLightFuncs->bFakeBulletsFlood);
-	this->GodModePlayer(BlackLightFuncs->bGodModePlayer);
-	this->GodModeVehicle(BlackLightFuncs->bGodModeVehicle);
 	this->SkinChanger(BlackLightFuncs->bSkinChanger);
 	this->VehicleWheelsVisibilityPulsator(BlackLightFuncs->bVehicleWheelsVisibilityPulsator);
-	this->CarHardFlip(BlackLightFuncs->bCarHardFlip);
+	//this->CarHardFlip(BlackLightFuncs->bCarHardFlip);
 	this->NoStun(BlackLightFuncs->bNoStun);
 	this->FreezePlayers(BlackLightFuncs->bFreezePlayers);
 	this->VehiclesFugga();
 	this->AntiLoading();
 	this->GameShutdownOnTime();
-
+	this->Dronemode();
+	this->BE_Surfer();
+	this->BE_Flysurf();
 
 	if (g_BotFuncs->BotSettings.bBotPick) BlackLightFuncs->iAimClientBot = GetAimingBot();
 }
@@ -360,6 +401,7 @@ void CNewMods::BlackLight_InitESPFuncs(void)
 	this->renderPlayersTracers(BlackLightFuncs->bPlayersTracers);
 	this->renderPlayerBones(BlackLightFuncs->bPlayersBones);
 	this->renderPlayerBox(BlackLightFuncs->bPlayerBox);
+	this->renderPlayer3DBox(BlackLightFuncs->bPlayer3DBoxes);
 	this->renderPlayers2DInfo(BlackLightFuncs->bPlayersInfo);
 	this->renderVehicleInfo(BlackLightFuncs->bVehicleInfo);
 	this->renderVehicleTracers(BlackLightFuncs->bVehicleTracers);
@@ -370,6 +412,7 @@ void CNewMods::BlackLight_InitESPFuncs(void)
 	this->renderBulletTracers(BlackLightFuncs->bBulletTracers);
 	this->renderTrailerTracers(BlackLightFuncs->bTrailerTracers);
 	this->renderWheelsInfo(BlackLightFuncs->bWheelsInfo);
+	this->renderVehicleWheelESP(BlackLightFuncs->bWheelESP);
 
 	//other
 	this->AdminsAutoUpdate();
@@ -432,8 +475,6 @@ void CNewMods::BlackLight_RegularFuncs(void)
 			BlackLightFuncs->bIsDeformedAnimActive = 0;
 		}
 	}
-
-	//setSpecialAction(set.special_action_anim);
 
 }
 
@@ -619,7 +660,7 @@ void CNewMods::VehicleDisableWheels(bool bEnable)
 	{
 		if (wheels == 1)
 		{
-			g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->vehicle->wheel_size = 1.0f;
+			g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->vehicle->wheel_size = 1112;
 			wheels = 0;
 		}
 	}
@@ -627,24 +668,27 @@ void CNewMods::VehicleDisableWheels(bool bEnable)
 
 void CNewMods::VehicleDisableFrame(bool bEnable)
 {
-	if (!bEnable)
-		return;
-
 	traceLastFunc("VehicleDisableFrame()");
+
 	if (!pGameInterface || !g_SAMP)
 		return;
 
-	if (IS_CHEAT_PANIC_ACTIVE) return;
+	if (IS_CHEAT_PANIC_ACTIVE)
+		return;
 
 	if (!pSampMulti->IsOurPlayerInCar())
 		return;
 
 	static int ibody = 0;
+
 	if (bEnable)
 	{
-		if (ibody == 0) ibody = 1;
-		*((bool*)0x0096914B) = 1;
-		g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->vehicle->base.bDontCastShadowsOn = true;
+		if (ibody == 0)
+		{
+			ibody = 1;
+			*((bool*)0x0096914B) = 1;
+			g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->vehicle->base.bDontCastShadowsOn = true;
+		}
 	}
 	else
 	{
@@ -699,12 +743,7 @@ void CNewMods::CrazyRoter(bool bEnable)
 
 	traceLastFunc("CrazyRoter()");
 
-	if (!pGameInterface)
-		return;
-
-	if (IS_CHEAT_PANIC_ACTIVE) return;
-
-	if (!pPedSelf)
+	if (!pGameInterface || IS_CHEAT_PANIC_ACTIVE || !pPedSelf)
 		return;
 
 	if (BlackLightFuncs->bPlayerFly || BlackLightFuncs->bAirbreakPlayer || BlackLightFuncs->bPlayerSurf)
@@ -714,26 +753,48 @@ void CNewMods::CrazyRoter(bool bEnable)
 		return;
 
 	static int imsg = 0;
-	if (bEnable)
-	{
-		if (imsg == 0)
-		{
-			addMessageToChatWindow("Press keys 1 2 or 3");
-			imsg = 1;
-		}
 
-		if (KEY_DOWN(KEY_1))
-			g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[0] += 0.5f;
-		if (KEY_DOWN(KEY_2))
-			g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[1] += 0.5f;
-		if (KEY_DOWN(KEY_3))
-			g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[2] += 0.5f;
-	}
-	else
+	// Reset message display state if disabled
+	if (!bEnable)
 	{
 		if (imsg != 0) imsg = 0;
+		return;
+	}
+
+	// Show instruction message
+	if (imsg == 0)
+	{
+		addMessageToChatWindow("Press keys 1, 2, or 3 to spin.");
+		imsg = 1;
+	}
+
+	// Key 1: Spin constantly around the X-axis
+	if (KEY_DOWN(0x02))
+	{
+		g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[0] += 1.0f;  // Increase rotation speed
+	}
+
+	// Key 2: Spin constantly around the Y-axis
+	if (KEY_DOWN(KEY_2))
+	{
+		g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[1] += 1.0f;  // Increase rotation speed
+	}
+
+	// Key 3: Spin constantly around the Z-axis (vertical axis)
+	if (KEY_DOWN(KEY_3))
+	{
+		g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[2] += 1.0f;  // Increase rotation speed
+	}
+
+	// Stop instantly when keys are released
+	if (!KEY_DOWN(KEY_1) && !KEY_DOWN(KEY_2) && !KEY_DOWN(KEY_3))
+	{
+		g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[0] = 0.0f;  // Stop X-axis rotation
+		g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[1] = 0.0f;  // Stop Y-axis rotation
+		g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->spin[2] = 0.0f;  // Stop Z-axis rotation
 	}
 }
+
 
 void CNewMods::MouseDrive(bool bEnable)
 {
@@ -806,6 +867,7 @@ void CNewMods::SampFastConnect(bool bEnable)
 	else pSampMulti->MemoryCopy((void*)(g_dwSAMP_Addr + 0x2A09C6), "\xB8\x0B\x00\x00", 4, true, NULL);
 }
 
+
 void CNewMods::DisableWaterWaves(bool bEnable)
 {
 	if (!bEnable)
@@ -866,7 +928,7 @@ void CNewMods::CustomTimeWeatherSet(bool bEnableCustomTime, bool bEnableCustomWe
 		if (weather == 0)
 		{
 			weather++;
-			gta_weather_state_set(-1);
+			gta_weather_state_set(6); //https://open.mp/docs/scripting/resources/weatherid
 		}
 	}
 }
@@ -926,7 +988,6 @@ void CNewMods::FastAnims(void)
 			ScriptCommand(&player_perform_animation_at_x_times_normal_rate, ScriptActorId(fsinfo), "run_armed", set.BlackLight.fast_run_armed_speed);
 	}
 }
-
 void CNewMods::HudThread(void)
 {
 	traceLastFunc("HudThread()");
@@ -1360,9 +1421,9 @@ void CNewMods::RecolorVehicles(void)
 	if (!g_Vehicles)
 		return;
 
-	static int time;
-	
-	if ((GetTickCount() - 250) >= time)
+	static int time = 0;
+
+	if (GetTickCount() - 250 >= time)
 	{
 		struct actor_info* self = actor_info_get(ACTOR_SELF, ACTOR_ALIVE);
 
@@ -1546,7 +1607,7 @@ void CNewMods::TargetSendBullets(void)
 		static float fOrigin[3], fTarget[3], fCenter[3];
 
 		actor_info* deadman = getGTAPedFromSAMPPlayerID(set.BlackLight.Target.TargetPlayer_SendBullets);
-		actor_info* me = actor_info_get(ACTOR_SELF, NULL);
+		actor_info* me = actor_info_get(ACTOR_SELF, ACTOR_ALIVE);
 
 		if (!deadman || !me)
 			return;
@@ -1558,7 +1619,7 @@ void CNewMods::TargetSendBullets(void)
 		fCenter[1] = -0.02f;
 		fCenter[2] = 0.04f;
 
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < 1; i++)
 		{
 			g_RakClient2->SendFakeBulletData(set.BlackLight.Target.TargetPlayer_SendBullets, fOrigin, fTarget, fCenter, pSampMulti->IsPlayerInCar(set.BlackLight.Target.TargetPlayer_SendBullets) ? pSampMulti->getPlayerWeaponModelID(g_Players->sLocalPlayerID) : pPedSelf->GetWeapon(pPedSelf->GetCurrentWeaponSlot())->GetType(), pSampMulti->IsPlayerInCar(set.BlackLight.Target.TargetPlayer_SendBullets) ? BULLET_HIT_TYPE_VEHICLE : BULLET_HIT_TYPE_PLAYER);
 		}
@@ -2090,7 +2151,7 @@ void CNewMods::PickVehicle(bool bEnable)
 							vinfo->car_status_left = 3;
 							GTAfunc_RepairVehicle(vinfo);
 							for (int i = 0; i < 4; i++)
-								pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_MISSING), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//âèçóàë äâåðåé
+								pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_MISSING), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//Ã¢Ã¨Ã§Ã³Ã Ã« Ã¤Ã¢Ã¥Ã°Ã¥Ã©
 							state = true;
 						}
 						else
@@ -2109,7 +2170,7 @@ void CNewMods::PickVehicle(bool bEnable)
 							vinfo->car_status_left = 0;
 							GTAfunc_RepairVehicle(vinfo);
 							for (int i = 0; i < 0; i++)
-								pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_BASHED_AND_SWINGING_FREE), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//âèçóàë äâåðåé
+								pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_BASHED_AND_SWINGING_FREE), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//Ã¢Ã¨Ã§Ã³Ã Ã« Ã¤Ã¢Ã¥Ã°Ã¥Ã©
 							state = false;
 
 						}
@@ -2147,6 +2208,88 @@ void CNewMods::PickVehicle(bool bEnable)
 	else
 	{
 		bVehiclePicked = false;
+	}
+}
+
+void CNewMods::MoveAllNearbyVehicles_MASS(bool bEnable)
+{
+	if (!bEnable)
+		return;
+
+	if (!g_Players || !pGameInterface || !g_Vehicles)
+		return;
+
+	actor_info* self = actor_info_get(ACTOR_SELF, ACTOR_ALIVE);
+	if (!self) return;
+
+	float* pPos = &self->base.matrix[12];
+
+	// start placing cars 7m in front of player
+	CVector basePos(
+		pPos[0] + cam_matrix[4] * 7.0f,
+		pPos[1] + cam_matrix[5] * 7.0f,
+		pPos[2]
+	);
+
+	if (KEY_DOWN(VK_RBUTTON))
+	{
+		float spacing = 4.0f;
+		int index = 0;
+
+		for (int v = 0; v < SAMP_MAX_VEHICLES; v++)
+		{
+			if (g_Vehicles->iIsListed[v] != 1) continue;
+
+			if (g_Players->pLocalPlayer->sCurrentVehicleID == v)
+				continue;
+
+			vehicle_info* vinfo = getGTAVehicleFromSAMPVehicleID(v);
+			if (!vinfo) continue;
+
+			CVehicle* pVeh = pGameInterface->GetPools()->GetVehicle((DWORD*)vinfo);
+			if (!pVeh) continue;
+
+			float* vpos = &vinfo->base.matrix[12];
+			if (vect3_dist(vpos, pPos) > 100.0f) continue;
+
+			// position in the line
+			CVector newPos = basePos;
+			newPos.fX += index * spacing;
+
+			float zero[3] = { 0,0,0 };
+
+			if (!g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->pedFlags.bInVehicle)
+			{
+				BitStream bsData4OnFoot;
+				bsData4OnFoot.Write((BYTE)ID_PLAYER_SYNC);
+				bsData4OnFoot.Write((PCHAR)&g_Players->pLocalPlayer->onFootData, sizeof(stOnFootData));
+				g_RakClient2->Send(&bsData4OnFoot, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+			}
+
+			stUnoccupiedData un;
+			memset(&un, 0, sizeof(un));
+
+			un.sVehicleID = v;
+			un.fHealth = vinfo->hitpoints;
+			un.byteSeatID = 1;
+
+			vect3_copy(&newPos.fX, un.fPosition);
+			vect3_copy(zero, un.fMoveSpeed);
+			vect3_copy(vinfo->spin, un.fTurnSpeed);
+			vect3_copy(&vinfo->base.matrixStruct->right.X, un.fRoll);
+			vect3_copy(&vinfo->base.matrixStruct->up.X, un.fDirection);
+
+			cheat_vehicle_teleport(vinfo, un.fPosition, gta_interior_id_get());
+			vect3_copy(zero, vinfo->speed);
+
+			index++;
+
+			BitStream bs;
+			bs.Write((BYTE)ID_UNOCCUPIED_SYNC);
+			bs.Write((PCHAR)&un, sizeof(un));
+			g_RakClient2->Send(&bs, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 0);
+
+		}
 	}
 }
 
@@ -2200,7 +2343,7 @@ void CNewMods::ComponentFlood(bool bEnable)
 				vinfo->car_status_left = 3;
 				GTAfunc_RepairVehicle(vinfo);
 				for (int i = 0; i < 4; i++)
-					pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_MISSING), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//âèçóàë äâåðåé
+					pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_MISSING), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//Ã¢Ã¨Ã§Ã³Ã Ã« Ã¤Ã¢Ã¥Ã°Ã¥Ã©
 				state = true;
 			}
 			else
@@ -2219,7 +2362,7 @@ void CNewMods::ComponentFlood(bool bEnable)
 				vinfo->car_status_left = 0;
 				GTAfunc_RepairVehicle(vinfo);
 				for (int i = 0; i < 0; i++)
-					pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_BASHED_AND_SWINGING_FREE), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//âèçóàë äâåðåé
+					pVehicle->GetDamageManager()->SetDoorStatus(eDoors(i), DT_DOOR_BASHED_AND_SWINGING_FREE), pVehicle->GetDamageManager()->SetPanelStatus(ePanels(i), DT_DOOR_BASHED_AND_SWINGING_FREE);//Ã¢Ã¨Ã§Ã³Ã Ã« Ã¤Ã¢Ã¥Ã°Ã¥Ã©
 				state = false;
 
 			}
@@ -2268,14 +2411,14 @@ void CNewMods::WheelsStatusPulse(bool bEnable)
 			{
 				GTAfunc_RepairVehicle(vinfo);
 				for (int i = 0; i < 4; i++)
-					pVehicle->GetDamageManager()->SetWheelStatus(eWheels(i), DT_WHEEL_BURST);//âèçóàë äâåðåé
+					pVehicle->GetDamageManager()->SetWheelStatus(eWheels(i), DT_WHEEL_BURST);//Ã¢Ã¨Ã§Ã³Ã Ã« Ã¤Ã¢Ã¥Ã°Ã¥Ã©
 				state = true;
 			}
 			else
 			{
 				GTAfunc_RepairVehicle(vinfo);
 				for (int i = 0; i < 0; i++)
-					pVehicle->GetDamageManager()->SetWheelStatus(eWheels(i), DT_WHEEL_INTACT);//âèçóàë äâåðåé
+					pVehicle->GetDamageManager()->SetWheelStatus(eWheels(i), DT_WHEEL_INTACT);//Ã¢Ã¨Ã§Ã³Ã Ã« Ã¤Ã¢Ã¥Ã°Ã¥Ã©
 				state = false;
 
 			}
@@ -2756,122 +2899,6 @@ void CNewMods::FakeBulletsFlood(bool bEnable)
 	}
 }
 
-void CNewMods::GodModePlayer(bool bEnable)
-{
-	if (!bEnable)
-		return;
-
-	traceLastFunc("GodModePlayer()");
-
-	if (!g_SAMP)
-		return;
-
-	if (IS_CHEAT_PANIC_ACTIVE)
-		return;
-
-	if (KEYCOMBO_PRESSED(set.key_hp_cheat))
-	{
-		bEnable ^= 1;	/* toggle hp cheat */
-		if (!bEnable)
-		{
-			struct actor_info* self = actor_info_get(ACTOR_SELF, 0);
-			self->flags &= ~ACTOR_FLAGS_INVULNERABLE;
-		}
-	}
-
-	static bool bHeliB = false, bPlayerGod = false;
-	if (BlackLightFuncs->bGodModeHeliBlade)
-	{
-		if (!bHeliB) 
-			bHeliB = true;
-
-		patcher_install(&patch_actor_hp_extraInv);
-		patcher_install(&patch_actor_hp);
-	}
-	else
-	{
-		if (bHeliB)
-		{
-			patcher_remove(&patch_actor_hp_extraInv);
-			patcher_remove(&patch_actor_hp);
-			bHeliB = false;
-		}
-	}
-
-	actor_info* me = actor_info_get(ACTOR_SELF, 0);
-	if (bEnable)
-	{
-		if (!bPlayerGod) 
-			bPlayerGod = true;
-		if (me != NULL)
-		{
-			patcher_install(&patch_actor_hp_extraInv);
-			patcher_install(&patch_actor_hp);
-			// invulnerability is on - at least be
-			//  invulnerable against non explosive projectiles
-			me->flags |= 4;
-			//if (set.hp_actor_explosion_inv)
-			me->flags |= 8;
-			//if (set.hp_actor_fall_inv)
-			me->flags |= 64;
-			//if (set.hp_actor_fire_inv)
-			me->flags |= 128;
-			//info->flags |= ACTOR_FLAGS_INVULNERABLE;
-			//me->flags |= 16; //melee
-			//me->flags |= 0x04; //bullets
-		}
-	}
-	else
-	{
-		if (bPlayerGod)
-		{
-			patcher_remove(&patch_actor_hp_extraInv);
-			patcher_remove(&patch_actor_hp);
-			me->flags &= ~ACTOR_FLAGS_INVULNERABLE;
-			bPlayerGod = false;
-		}
-	}
-}
-
-void CNewMods::GodModeVehicle(bool bEnable)
-{
-	if (!bEnable)
-		return;
-
-	if (IS_CHEAT_PANIC_ACTIVE)
-		return;
-
-	traceLastFunc("GodModeVehicle()");
-
-	if (!g_SAMP)
-		return;
-
-	static bool bVehicleGod = false;
-	struct vehicle_info* myc = vehicle_info_get(VEHICLE_SELF, 0);
-
-	if (myc == NULL)
-		return;
-
-	if (bEnable)
-	{
-			if (!bVehicleGod)
-				bVehicleGod = true;
-			patcher_install(&patch_vehicle_hp);
-			myc->m_nVehicleFlags.bTyresDontBurst = true;
-			myc->m_nVehicleFlags.bCanBeDamaged = false;
-		
-	}
-	else 
-	{
-			if (bVehicleGod)
-			{
-				patcher_remove(&patch_vehicle_hp);
-				myc->m_nVehicleFlags.bTyresDontBurst = false;
-				myc->m_nVehicleFlags.bCanBeDamaged = true;
-				bVehicleGod = false;
-			}
-	}
-}
 
 void CNewMods::SkinChanger(bool bEnable)
 {
@@ -2976,7 +3003,6 @@ void CNewMods::CarHardFlip(bool bEnable)
 		return;
 
 	vehicle_info* veh = vehicle_info_get(VEHICLE_SELF, VEHICLE_ALIVE);
-
 	if (!veh) return;
 
 	if (bEnable)
@@ -2984,83 +3010,44 @@ void CNewMods::CarHardFlip(bool bEnable)
 		if (pSampMulti->IsMenuActive())
 			return;
 
-		// inter-frame timing info from the game
-		float		fTimeStep = *(float*)0xB7CB5C;
+		// Inter-frame timing info from the game
+		float fTimeStep = *(float*)0xB7CB5C;
 
-		// get our vehicle, gravity, and matrix
+		// Get our vehicle and matrix
 		CVehicle* cveh = getSelfCVehicle();
-		CVector		cvehGrav;
-		CMatrix		cvehMatrix;
-		CVector rotationAxis = cheat_vehicle_getPositionUnder(cveh);
-		// no more spin cycle for you
-		CVector vZero(0.0f, 0.0f, 0.0f);
+		CVector cvehGrav;
+		CMatrix cvehMatrix;
+		CVector vZero(0.0f, 0.0f, 6.0f);
 
-		if (KEY_PRESSED(0x02))
+		// Save initial X and Y position of the vehicle
+		float initialX = cveh->GetPosition()->fX;
+		float initialY = cveh->GetPosition()->fY;
+
+		if (KEY_DOWN(0x02))  // Right mouse button
 		{
-			cveh->GetGravity(&cvehGrav);
+			// Keep X and Y frozen and only rotate around Z
+			cveh->GetPosition()->fX = initialX;  // Freeze X
+			cveh->GetPosition()->fY = initialY;  // Freeze Y
+
+			// Set a constant rotation speed around Z axis
+			float theta = M_PI / (150.0f / fTimeStep);  // Adjust this value for rotation speed
+
+			vehicle_prevent_below_height(veh, 0.1f);
+
+			// Get the vehicle's current matrix and apply the rotation on the Z-axis
 			cveh->GetMatrix(&cvehMatrix);
+			cvehMatrix = cvehMatrix.Rotate(&cvehMatrix.vUp, theta);  // Rotate around Z-axis
 
-			// get "down" from vehicle model
-
-			// normalize our vectors
-			cvehGrav.Normalize();
-			rotationAxis.Normalize();
-
-			// axis and rotation for gravity
-			float theta = acos(rotationAxis.DotProduct(&cvehGrav));
-			if (!near_zero(theta))
-			{
-				rotationAxis.CrossProduct(&cvehGrav);
-				rotationAxis.Normalize();
-				rotationAxis.ZeroNearZero();
-				cvehMatrix = cvehMatrix.Rotate(&rotationAxis, -theta);
-			}
-
-			// slow turn to the right
-			theta = M_PI / (75.0f / fTimeStep);
-
-			CVector slowTurnAxis = cvehMatrix.vUp;
-			slowTurnAxis.Normalize();
-			slowTurnAxis.ZeroNearZero();
-			cvehMatrix = cvehMatrix.Rotate(&cvehMatrix.vUp, theta);
-
-			// set the new matrix
+			// Apply the new matrix to the vehicle
 			cveh->SetMatrix(&cvehMatrix);
-			cveh->SetTurnSpeed(&vZero);
-		}
-		else if(KEY_PRESSED(0x01))
-		{
-			cveh->GetGravity(&cvehGrav);
-			cveh->GetMatrix(&cvehMatrix);
 
-			// get "down" from vehicle model
-
-			// normalize our vectors
-			cvehGrav.Normalize();
-			// axis and rotation for gravity
-			float theta = acos(rotationAxis.DotProduct(&cvehGrav));
-			if (!near_zero(theta))
-			{
-				rotationAxis.CrossProduct(&cvehGrav);
-				rotationAxis.Normalize();
-				rotationAxis.ZeroNearZero();
-				cvehMatrix = cvehMatrix.Rotate(&rotationAxis, -theta);
-			}
-
-			// slow turn to the right
-			theta = M_PI / (-180.0f / fTimeStep);
-
-			CVector slowTurnAxis = cvehMatrix.vUp;
-			slowTurnAxis.Normalize();
-			slowTurnAxis.ZeroNearZero();
-			cvehMatrix = cvehMatrix.Rotate(&cvehMatrix.vUp, theta);
-
-			// set the new matrix
-			cveh->SetMatrix(&cvehMatrix);
+			// Set turn speed to zero (so the vehicle doesn't drift)
 			cveh->SetTurnSpeed(&vZero);
 		}
 	}
 }
+
+
 
 void CNewMods::NoStun(bool bEnable)
 {
@@ -3119,65 +3106,58 @@ struct freeze_info
 
 void CNewMods::FreezePlayers(bool bEnable)
 {
+	if (!g_Players) return;
+
+	static freeze_info* freeze = NULL;
+
 	if (!bEnable)
+	{
+		if (freeze)
+		{
+			for (int i = 0; i < pool_actor->size; i++)
+				freeze[i].setfreeze = 0;
+		}
 		return;
+	}
 
-	if (!g_Players)
-		return;
-
-	static struct freeze_info* freeze;
-	struct actor_info* info;
-	float* pos;
+	if (!freeze)
+	{
+		freeze = (freeze_info*)malloc(pool_actor->size * sizeof(freeze_info));
+		memset(freeze, 0, pool_actor->size * sizeof(freeze_info));
+	}
 
 	actor_info* self = actor_info_get(ACTOR_SELF, ACTOR_ALIVE);
-	if (self != NULL)
-		pos = &self->base.matrix[4 * 3];
-	else
-		return;
+	if (!self) return;
 
-	if (freeze == NULL)	/* XXX free on exit */
-	{
-		freeze = (struct freeze_info*)malloc(pool_actor->size * sizeof(struct freeze_info));
-		if (freeze == NULL)
-			return;
-		memset(freeze, 0, pool_actor->size * sizeof(struct freeze_info));
-	}
+	float* pos = &self->base.matrix[4 * 3];
 
-	if (bEnable)
+	for (int i = 0; i < pool_actor->size; i++)
 	{
-		for (int i = 0; i < pool_actor->size; i++)
+		actor_info* info = actor_info_get(i, VEHICLE_ALIVE);
+		if (!info || info == self)
 		{
-			if ((info = actor_info_get(i, VEHICLE_ALIVE)) == NULL || info == self)
-			{
-				if (info == self && freeze[i].setfreeze)
-					cheat_vehicle_air_brake_set(1);	/* entered a frozen vehicle */
-				freeze[i].setfreeze = 0;
-				continue;
-			}
-
-			if (freeze[i].setfreeze)
-			{
-				matrix_copy(freeze[i].matrix, info->base.matrix);
-				vect3_mult(info->speed, 0.0f, info->speed);
-				vect3_mult(info->spin, 0.0f, info->spin);
-			}
-
-			if (vect3_dist(pos, &info->base.matrix[4 * 3]) >= 80.0f)
-			{
-				freeze[i].setfreeze = 0;
-				continue;
-			}
-
-			if (freeze[i].setfreeze)
-			{
-				continue;
-			}
-
-			matrix_copy(info->base.matrix, freeze[i].matrix);
-			freeze[i].setfreeze = 1;
+			freeze[i].setfreeze = 0;
+			continue;
 		}
+
+		// Too far? don't freeze
+		if (vect3_dist(pos, &info->base.matrix[12]) >= 80.0f)
+		{
+			freeze[i].setfreeze = 0;
+			continue;
+		}
+
+		// Always refresh the frozen position
+		matrix_copy(info->base.matrix, freeze[i].matrix);
+		freeze[i].setfreeze = 1;
+
+		// Apply freeze
+		matrix_copy(freeze[i].matrix, info->base.matrix);
+		vect3_zero(info->speed);
+		vect3_zero(info->spin);
 	}
 }
+
 
 void CNewMods::RainbowVehicle(bool bEnable)
 {
@@ -3287,159 +3267,190 @@ void CNewMods::RainbowSky(bool bEnable)
 		}
 	}
 }
-
 void CNewMods::RainbowChat(bool bEnable)
 {
-	traceLastFunc("RainbowChat()");
-
-	if (!g_SAMP || !g_Chat)
+	if (!g_SAMP || !g_Chat || IS_CHEAT_PANIC_ACTIVE)
 		return;
 
-	if (!pGameInterface)
-		return;
+	static bool active = false;
+	static DWORD origText, origPrefix, origDebug;
 
-	if (IS_CHEAT_PANIC_ACTIVE)
-		return;
-
-	static bool bon = false;
 	if (bEnable)
 	{
-		if (!bon)
-			bon = true;
-		static float rainbow_color_chat, misc;	//speed
-		DWORD rainbow_color_x_chat;
-		rainbow_color_chat += misc = 0.0001 * set.BlackLight.Rainbow.rainbow_chat_speed;
-		if (rainbow_color_chat > 1.f) rainbow_color_chat = 0.f;
-		if (BlackLightFuncs->bCustomRainbowColorSet)
-			rainbow_color_x_chat = D3DCOLOR_ARGB(254, (BYTE)(custom_color_chat.z * 255), (BYTE)(custom_color_chat.y * 255), (BYTE)(custom_color_chat.x * 255));
-		else if (!BlackLightFuncs->bCustomRainbowColorSet)
-			rainbow_color_x_chat = Color2::ToImColor(Color2::FromHSB(rainbow_color_chat, 1.f, 1.f));
-		ImVec4 chatColorActive = Color2::ToImColor(Color2::FromHSB(rainbow_color_chat, 1.f, 1.f));
-
-		DWORD ChatAddr = *(DWORD*)(g_dwSAMP_Addr + 0x21A0E8);
-		DWORD ChatAddr2 = *(DWORD*)((ChatAddr + 0x8));
-
-		*(DWORD*)(ChatAddr2 + 0x127) = D3DCOLOR_ARGB(255, (BYTE)round(chatColorActive.x * 255.f), (BYTE)round(chatColorActive.y * 255.f), (BYTE)round(chatColorActive.z * 255.f));
-		*(DWORD*)(((g_dwSAMP_Addr + 0x21A0E8) + 0x8) + 0x127) = rainbow_color_x_chat;
-		g_Chat->clTextColor = rainbow_color_x_chat;
-		g_Chat->chatEntry->clTextColor = rainbow_color_x_chat;
-		g_Chat->chatEntry->clPrefixColor = rainbow_color_x_chat;
-		g_Chat->clDebugColor = rainbow_color_x_chat;
-	}
-	else
-	{
-		if (bon)
+		if (!active)
 		{
-			g_Chat->clTextColor = D3DCOLOR_RGBA(255, 255, 255,255 );
-			g_Chat->chatEntry->clTextColor = D3DCOLOR_RGBA(255, 255, 255, 255);
-			g_Chat->chatEntry->clPrefixColor = D3DCOLOR_RGBA(255, 255, 255, 255);
-			g_Chat->clDebugColor = D3DCOLOR_RGBA(255, 255, 255, 255);
-			bon = false;
+			// save original colors ONCE
+			origText = g_Chat->clTextColor;
+			origPrefix = g_Chat->chatEntry->clPrefixColor;
+			origDebug = g_Chat->clDebugColor;
+			active = true;
 		}
+
+		// rainbow progress
+		static float t = 0.0f;
+		t += 0.0005f * set.BlackLight.Rainbow.rainbow_chat_speed;
+		if (t > 1.f) t = 0.f;
+
+		// rainbow color (HSB â†’ RGB)
+		ImVec4 c = Color2::ToImColor(Color2::FromHSB(t, 1.f, 1.f));
+
+		// convert ImGui RGBA â†’ SAMP ABGR 
+		DWORD sampColor =
+			(BYTE)(c.w * 255) << 24 |
+			(BYTE)(c.x * 255) << 0 |
+			(BYTE)(c.y * 255) << 8 |
+			(BYTE)(c.z * 255) << 16;
+
+		// WRITE DIRECTLY WHERE IT ACTUALLY WORKS
+		g_Chat->clTextColor = sampColor;
+		g_Chat->chatEntry->clTextColor = sampColor;
+		g_Chat->chatEntry->clPrefixColor = sampColor;
+		g_Chat->clDebugColor = sampColor;
+
+		return;
+	}
+
+	// DISABLING
+	if (active)
+	{
+		// restore original colors
+		g_Chat->clTextColor = origText;
+		g_Chat->chatEntry->clPrefixColor = origPrefix;
+		g_Chat->chatEntry->clTextColor = origText;
+		g_Chat->clDebugColor = origDebug;
+		active = false;
 	}
 }
+
 
 void CNewMods::RainbowHud(bool bEnable)
 {
 	traceLastFunc("RainbowHud()");
+	if (!g_SAMP || !pGameInterface || IS_CHEAT_PANIC_ACTIVE) return;
 
-	if (!g_SAMP)
-		return;
+	static bool rainbowActive = false;
 
-	if (!pGameInterface)
-		return;
+	// list of all HUD color addresses
+	static DWORD* hudColors[] = {
+		(DWORD*)0xBAB22C, (DWORD*)0xBAB230, (DWORD*)0xBAB234, (DWORD*)0xBAB238,
+		(DWORD*)0xBAB23C, (DWORD*)0xBAB240, (DWORD*)0xBAB244, (DWORD*)0xBAB248,
+		(DWORD*)0xBAB24C, (DWORD*)0xBAB250, (DWORD*)0xBAB254, (DWORD*)0xBAB258,
+		(DWORD*)0xBAB25C, (DWORD*)0xBAB260
+	};
+	const int HUD_COUNT = sizeof(hudColors) / sizeof(hudColors[0]);
 
-	if (IS_CHEAT_PANIC_ACTIVE)
-		return;
+	static DWORD originalHud[64];  // enough room
+	static BYTE originalRedHL, originalGreenHL, originalBlueHL;
+	static BYTE originalRedAR, originalGreenAR, originalBlueAR;
+	static bool savedOriginal = false;
 
-	static bool bon = false;
+	//----------------------------------------------------------
+	// ENABLE RAINBOW
+	//----------------------------------------------------------
 	if (bEnable)
 	{
-		if (!bon)
-			bon = true;
+		if (!rainbowActive)
+		{
+			// save original HUD colors ONCE
+			if (!savedOriginal)
+			{
+				for (int i = 0; i < HUD_COUNT; i++)
+					originalHud[i] = *hudColors[i];
 
-		static float rainbow_color_redus, misc;	//speed
-		DWORD rainbow_color_x;
-		rainbow_color_redus += misc = 0.0001 * set.BlackLight.Rainbow.rainbow_hud_speed;
-		if (rainbow_color_redus > 1.f) rainbow_color_redus = 0.f;
+				originalRedHL = *(BYTE*)(0x58D973 + 1);
+				originalGreenHL = *(BYTE*)(0x58D96E + 1);
+				originalBlueHL = *(BYTE*)(0x58D969 + 1);
+
+				originalRedAR = *(BYTE*)(0x58D8AF + 1);
+				originalGreenAR = *(BYTE*)(0x58D8AA + 1);
+				originalBlueAR = *(BYTE*)(0x58D89F + 1);
+
+				savedOriginal = true;
+			}
+			rainbowActive = true;
+		}
+
+		//------------------------------------------------------
+		// rainbow logic
+		//------------------------------------------------------
+		static float t = 0.0f;
+		t += 0.0001f * set.BlackLight.Rainbow.rainbow_hud_speed;
+		if (t > 1.f) t = 0.f;
+
+		ImVec4 c;
+		DWORD dcolor;
+
 		if (BlackLightFuncs->bCustomRainbowColorSet)
-			rainbow_color_x = D3DCOLOR_ARGB(254, (BYTE)(custom_color_hud.z * 255), (BYTE)(custom_color_hud.y * 255), (BYTE)(custom_color_hud.x * 255));
-		else if (!BlackLightFuncs->bCustomRainbowColorSet)
-			rainbow_color_x = Color2::ToImColor(Color2::FromHSB(rainbow_color_redus, 1.f, 1.f));
-		ImVec4 mainColorActive = Color2::ToImColor(Color2::FromHSB(rainbow_color_redus, 1.f, 1.f));
+		{
+			c = ImVec4(
+				custom_color_hud.x,
+				custom_color_hud.y,
+				custom_color_hud.z,
+				1.0f
+			);
+		}
+		else
+		{
+			c = Color2::ToImColor(Color2::FromHSB(t, 1.f, 1.f));
+		}
 
-		*(DWORD*)(0xBAB22C) = rainbow_color_x;
-		*(DWORD*)(0xBAB230) = rainbow_color_x;
-		*(DWORD*)(0xBAB234) = rainbow_color_x;
-		*(DWORD*)(0xBAB238) = rainbow_color_x;
-		*(DWORD*)(0xBAB23C) = rainbow_color_x;
-		*(DWORD*)(0xBAB260) = rainbow_color_x;
-		*(DWORD*)(0xBAB240) = rainbow_color_x;
-		*(DWORD*)(0xBAB244) = rainbow_color_x;
-		*(DWORD*)(0xBAB248) = rainbow_color_x;
-		*(DWORD*)(0xBAB24C) = rainbow_color_x;
-		*(DWORD*)(0xBAB250) = rainbow_color_x;
-		*(DWORD*)(0xBAB254) = rainbow_color_x;
-		*(DWORD*)(0xBAB258) = rainbow_color_x;
-		*(DWORD*)(0xBAB25C) = rainbow_color_x;
-		*(DWORD*)(0xBAB260) = rainbow_color_x;
+		dcolor = D3DCOLOR_ARGB(255, (BYTE)(c.x * 255), (BYTE)(c.y * 255), (BYTE)(c.z * 255));
 
-		*(BYTE*)(0x58D973 + 1) = (BYTE)round(mainColorActive.x * 255.f);
-		*(BYTE*)(0x58D96E + 1) = (BYTE)round(mainColorActive.y * 255.f);
-		*(BYTE*)(0x58D969 + 1) = (BYTE)round(mainColorActive.z * 255.f);
+		// write to all HUD color addresses
+		for (int i = 0; i < HUD_COUNT; i++)
+			*hudColors[i] = dcolor;
 
-		*(BYTE*)(0x58D8AF + 1) = (BYTE)round(mainColorActive.x * 255.f);
-		*(BYTE*)(0x58D8AA + 1) = (BYTE)round(mainColorActive.y * 255.f);
-		*(BYTE*)(0x58D89F + 1) = (BYTE)round(mainColorActive.z * 255.f);
+		// write HUD highlight colors
+		*(BYTE*)(0x58D973 + 1) = (BYTE)(c.x * 255);
+		*(BYTE*)(0x58D96E + 1) = (BYTE)(c.y * 255);
+		*(BYTE*)(0x58D969 + 1) = (BYTE)(c.z * 255);
 
+		*(BYTE*)(0x58D8AF + 1) = (BYTE)(c.x * 255);
+		*(BYTE*)(0x58D8AA + 1) = (BYTE)(c.y * 255);
+		*(BYTE*)(0x58D89F + 1) = (BYTE)(c.z * 255);
 
+		// SAMP textdraws
 		for (int i = 0; i < SAMP_MAX_TEXTDRAWS; i++)
 		{
-			if (g_SAMP->pPools->pTextdraw->textdraw[i] == nullptr)
-				continue;
-			g_SAMP->pPools->pTextdraw->textdraw[i]->dwLetterColor = rainbow_color_x;
-			    g_SAMP->pPools->pTextdraw->textdraw[i]->dwBoxColor = rainbow_color_x;
+			if (!g_SAMP->pPools->pTextdraw->textdraw[i]) continue;
+			g_SAMP->pPools->pTextdraw->textdraw[i]->dwLetterColor = dcolor;
+			g_SAMP->pPools->pTextdraw->textdraw[i]->dwBoxColor = dcolor;
 		}
-
-		for (int i = 0; i < SAMP_MAX_PLAYERTEXTDRAWS; i++) {
-			if (g_SAMP->pPools->pTextdraw->playerTextdraw[i] == nullptr)
-				continue;
-			g_SAMP->pPools->pTextdraw->playerTextdraw[i]->dwLetterColor = rainbow_color_x;
-			    g_SAMP->pPools->pTextdraw->playerTextdraw[i]->dwBoxColor = rainbow_color_x;
-		}
-	}
-	else
-	{
-		if (bon)
+		for (int i = 0; i < SAMP_MAX_PLAYERTEXTDRAWS; i++)
 		{
-			*(DWORD*)(0xBAB22C) = 0xA1;
-			*(DWORD*)(0xBAB230) = 0xA1;
-			*(DWORD*)(0xBAB234) = 0xA1;
-			*(DWORD*)(0xBAB238) = 0xA1;
-			*(DWORD*)(0xBAB23C) = 0xA1;
-			*(DWORD*)(0xBAB260) = 0xA1;
-			*(DWORD*)(0xBAB240) = 0xA1;
-			*(DWORD*)(0xBAB244) = 0xA1;
-			*(DWORD*)(0xBAB248) = 0xA1;
-			*(DWORD*)(0xBAB24C) = 0xA1;
-			*(DWORD*)(0xBAB250) = 0xA1;
-			*(DWORD*)(0xBAB254) = 0xA1;
-			*(DWORD*)(0xBAB258) = 0xA1;
-			*(DWORD*)(0xBAB25C) = 0xA1;
-			*(DWORD*)(0xBAB260) = 0xA1;
-
-			*(BYTE*)(0x58D973 + 1) = 255;
-			*(BYTE*)(0x58D96E + 1) = 255;
-			*(BYTE*)(0x58D969 + 1) = 255;
-
-			*(BYTE*)(0x58D8AF + 1) = 255;
-			*(BYTE*)(0x58D8AA + 1) = 255;
-			*(BYTE*)(0x58D89F + 1) = 255;
-			bon = false;
+			if (!g_SAMP->pPools->pTextdraw->playerTextdraw[i]) continue;
+			g_SAMP->pPools->pTextdraw->playerTextdraw[i]->dwLetterColor = dcolor;
+			g_SAMP->pPools->pTextdraw->playerTextdraw[i]->dwBoxColor = dcolor;
 		}
 
+		return;
+	}
+
+	//----------------------------------------------------------
+	// DISABLE RAINBOW â†’ RESTORE ORIGINAL
+	//----------------------------------------------------------
+	if (rainbowActive)
+	{
+		if (savedOriginal)
+		{
+			// restore HUD colors
+			for (int i = 0; i < HUD_COUNT; i++)
+				*hudColors[i] = originalHud[i];
+
+			// restore highlight colors
+			*(BYTE*)(0x58D973 + 1) = originalRedHL;
+			*(BYTE*)(0x58D96E + 1) = originalGreenHL;
+			*(BYTE*)(0x58D969 + 1) = originalBlueHL;
+
+			*(BYTE*)(0x58D8AF + 1) = originalRedAR;
+			*(BYTE*)(0x58D8AA + 1) = originalGreenAR;
+			*(BYTE*)(0x58D89F + 1) = originalBlueAR;
+		}
+
+		rainbowActive = false;
 	}
 }
+
 
 void CNewMods::RainbowCrosshair(bool bEnable)
 {
@@ -3503,7 +3514,6 @@ void CNewMods::RainbowCrosshair(bool bEnable)
 		}
 	}
 }
-
 
 void CNewMods::RainbowCarLights(bool bEnable)
 {
@@ -3690,59 +3700,82 @@ void CNewMods::RainbowRadar(bool bEnable)
 
 void CNewMods::RainbowNicknames(bool bEnable)
 {
-
 	traceLastFunc("RainbowNicknames()");
+	if (!g_SAMP || !pGameInterface || IS_CHEAT_PANIC_ACTIVE) return;
 
-	if (!g_SAMP)
-		return;
+	static bool rainbowActive = false;
 
-	if (!pGameInterface)
-		return;
+	// Store ORIGINAL colortable once
+	static bool savedOriginal = false;
+	static D3DCOLOR originalColors[SAMP_MAX_PLAYERS];
 
-	if (IS_CHEAT_PANIC_ACTIVE)
-		return;
+	D3DCOLOR* sampColorTable = (D3DCOLOR*)((char*)g_dwSAMP_Addr + SAMP_COLOR_OFFSET);
 
-	static bool bon = false;
+	//---------------------------------------------------------------------
+	// ENABLE RAINBOW
+	//---------------------------------------------------------------------
 	if (bEnable)
 	{
-		if (!bon)
-			bon = true;
-
-		static float rainbow_color_nicknames, misc;	//speed
-		DWORD rainbow_color_x_nicknames;
-		rainbow_color_nicknames += misc = 0.0001 * set.BlackLight.Rainbow.rainbow_nicknames_speed;
-		if (rainbow_color_nicknames > 1.f) rainbow_color_nicknames = 0.f;
-		if (BlackLightFuncs->bCustomRainbowColorSet)
-			rainbow_color_x_nicknames = D3DCOLOR_ARGB(254, (BYTE)(custom_color_nicknames.z * 255), (BYTE)(custom_color_nicknames.y * 255), (BYTE)(custom_color_nicknames.x * 255));
-		else if (!BlackLightFuncs->bCustomRainbowColorSet)
-			rainbow_color_x_nicknames = Color2::ToImColor(Color2::FromHSB(rainbow_color_nicknames, 1.f, 1.f));
-		ImVec4 NicknamesColorActive = Color2::ToImColor(Color2::FromHSB(rainbow_color_nicknames, 1.f, 1.f));
-
-		for (int ii = 0; ii < SAMP_MAX_PLAYERS; ii++)
+		if (!rainbowActive)
 		{
-			if (g_SAMP->pPools->pPlayer->pRemotePlayer[ii] == nullptr)
-				continue;
-			if (g_SAMP->pPools->pPlayer->pRemotePlayer[ii]->pPlayerData == nullptr)
-				continue;
-			((D3DCOLOR*)((char*)g_dwSAMP_Addr + SAMP_COLOR_OFFSET))[ii] = D3DCOLOR_ARGB((BYTE)round(NicknamesColorActive.x * 255.f), (BYTE)round(NicknamesColorActive.y * 255.f), (BYTE)round(NicknamesColorActive.z * 255.f), 255);
-		}
-	}
-	else
-	{
-		if (bon)
-		{
-			for (int ii = 0; ii < SAMP_MAX_PLAYERS; ii++)
+			// Save original colors only ONCE
+			if (!savedOriginal)
 			{
-				if (g_Players->iIsListed[ii] != 1)
-					continue;
+				for (int i = 0; i < SAMP_MAX_PLAYERS; i++)
+					originalColors[i] = sampColorTable[i];
 
-				((D3DCOLOR*)((char*)g_dwSAMP_Addr + SAMP_COLOR_OFFSET))[ii] = ((D3DCOLOR*)((char*)g_dwSAMP_Addr + SAMP_COLOR_OFFSET))[ii];
+				savedOriginal = true;
 			}
-			bon = false;
+
+			rainbowActive = true;
 		}
+
+		static float h = 0.0f;
+		h += 0.0001f * set.BlackLight.Rainbow.rainbow_nicknames_speed;
+		if (h > 1.0f) h = 0.0f;
+
+		D3DCOLOR col;
+
+		if (BlackLightFuncs->bCustomRainbowColorSet)
+		{
+			col = D3DCOLOR_ARGB(
+				255,
+				(BYTE)(custom_color_nicknames.z * 255),
+				(BYTE)(custom_color_nicknames.y * 255),
+				(BYTE)(custom_color_nicknames.x * 255)
+			);
+		}
+		else
+		{
+			ImVec4 c = Color2::ToImColor(Color2::FromHSB(h, 1.f, 1.f));
+			col = D3DCOLOR_ARGB(255, (BYTE)(c.x * 255), (BYTE)(c.y * 255), (BYTE)(c.z * 255));
+		}
+
+		// Apply rainbow color to all valid players
+		for (int i = 0; i < SAMP_MAX_PLAYERS; i++)
+		{
+			if (g_Players->iIsListed[i] != 1) continue;
+			sampColorTable[i] = col;
+		}
+
+		return;
 	}
 
+	//---------------------------------------------------------------------
+	// DISABLE RAINBOW â†’ RESTORE ORIGINAL COLORS
+	//---------------------------------------------------------------------
+	if (rainbowActive)
+	{
+		if (savedOriginal)
+		{
+			for (int i = 0; i < SAMP_MAX_PLAYERS; i++)
+				sampColorTable[i] = originalColors[i];
+		}
+
+		rainbowActive = false;
+	}
 }
+
 
 void CNewMods::renderDriverInfo(bool bEnable)
 {
@@ -3798,7 +3831,9 @@ void CNewMods::renderDriverInfo(bool bEnable)
 			D3DCOLOR color = samp_color_get(idrivers);
 
 			if (render)
+			{
 				pD3DFont_sampStuff->Print(pSampMulti->SetText("{19BC0D}Driver: {FFFFFF}%s{19BC0D}[{FFFFFF}%d{19BC0D}]", getPlayerName(idrivers), idrivers), COLOR_WHITE(255), to_screen.x, to_screen.y + (pD3DFont_sampStuff->DrawHeight() + 1.0f), false, false);
+			}
 		}
 	}
 }
@@ -3853,8 +3888,8 @@ void CNewMods::renderShowDoorsStatus(bool bEnable)
 
 		if (i != g_Players->pLocalPlayer->sCurrentVehicleID)
 		{
-			g_Vehicles->pSAMP_Vehicle[i]->iIsLocked ? pD3DFont->PrintShadow(screenposs.x, screenposs.y - 20, COLOR_RED(255), "Locked") :
-				pD3DFont_sampStuff->PrintShadow(screenposs.x, screenposs.y - 20, COLOR_GREEN(255), "Unlocked");
+			g_Vehicles->pSAMP_Vehicle[i]->iIsLocked ? pD3DFont->PrintShadow(screenposs.x, screenposs.y - 20, COLOR_RED(255), pSampMulti->SetText("Vehicle: %d = Locked" ,i)) :
+				pD3DFont_sampStuff->PrintShadow(screenposs.x, screenposs.y - 20, COLOR_GREEN(255), pSampMulti->SetText("Vehicle: %d = Unlocked",i));
 		}
 	}
 }
@@ -4046,6 +4081,7 @@ void CNewMods::renderPlayerBones(bool bEnable)
 	}
 }
 
+
 void CNewMods::renderPlayerBox(bool bEnable)
 {
 	if (!bEnable)
@@ -4186,6 +4222,403 @@ void CNewMods::renderPlayerBox(bool bEnable)
 		}
 	}
 }
+
+static void DrawOriented3DBox(const CVector& center,
+	const CVector& right,
+	const CVector& front,
+	const CVector& up,
+	float halfWidth,
+	float halfLength,
+	float halfHeight,
+	D3DCOLOR color)
+{
+	CVector ax = right; ax.Normalize();
+	CVector ay = front; ay.Normalize();
+	CVector az = up;    az.Normalize();
+
+	CVector ex = ax * halfWidth;
+	CVector ey = ay * halfLength;
+	CVector ez = az * halfHeight;
+
+	// 8 corners of the box
+	CVector c000 = center - ex - ey - ez;
+	CVector c100 = center + ex - ey - ez;
+	CVector c110 = center + ex + ey - ez;
+	CVector c010 = center - ex + ey - ez;
+
+	CVector c001 = center - ex - ey + ez;
+	CVector c101 = center + ex - ey + ez;
+	CVector c111 = center + ex + ey + ez;
+	CVector c011 = center - ex + ey + ez;
+
+	// Bottom rectangle
+	render->DrawLine(CVecToD3DXVEC(c000), CVecToD3DXVEC(c100), color);
+	render->DrawLine(CVecToD3DXVEC(c100), CVecToD3DXVEC(c110), color);
+	render->DrawLine(CVecToD3DXVEC(c110), CVecToD3DXVEC(c010), color);
+	render->DrawLine(CVecToD3DXVEC(c010), CVecToD3DXVEC(c000), color);
+
+	// Top rectangle
+	render->DrawLine(CVecToD3DXVEC(c001), CVecToD3DXVEC(c101), color);
+	render->DrawLine(CVecToD3DXVEC(c101), CVecToD3DXVEC(c111), color);
+	render->DrawLine(CVecToD3DXVEC(c111), CVecToD3DXVEC(c011), color);
+	render->DrawLine(CVecToD3DXVEC(c011), CVecToD3DXVEC(c001), color);
+
+	// Vertical edges
+	render->DrawLine(CVecToD3DXVEC(c000), CVecToD3DXVEC(c001), color);
+	render->DrawLine(CVecToD3DXVEC(c100), CVecToD3DXVEC(c101), color);
+	render->DrawLine(CVecToD3DXVEC(c110), CVecToD3DXVEC(c111), color);
+	render->DrawLine(CVecToD3DXVEC(c010), CVecToD3DXVEC(c011), color);
+}
+
+void CNewMods::renderPlayer3DBox(bool bEnable)
+{
+	if (!bEnable) return;
+	if (!g_Players || !pGameInterface) return;
+	if (gta_menu_active() || IS_CHEAT_PANIC_ACTIVE) return;
+
+	for (int id = 0; id < SAMP_MAX_PLAYERS; id++)
+	{
+		if (g_Players->iIsListed[id] != 1)
+			continue;
+
+		actor_info* a = getGTAPedFromSAMPPlayerID(id);
+		if (!a) continue;
+
+		CPed* pPed = pGameInterface->GetPools()->GetPed((DWORD*)a);
+		if (!pPed) continue;
+
+		// Matrix (orientation)
+		CMatrix m;
+		pPed->GetMatrix(&m);
+
+		CVector right = m.vRight;  right.Normalize();
+		CVector front = m.vFront;  front.Normalize();
+		CVector up = m.vUp;     up.Normalize();
+
+		CVector headPos;
+		pPed->GetBonePosition(BONE_HEAD, &headPos);
+
+		CVector footPos;
+		pPed->GetBonePosition(BONE_LEFTFOOT, &footPos);
+
+		// Height from head to feet
+		float height = (headPos - footPos).Length();
+		float halfHeight = height * 0.5f;
+
+		CVector center = headPos - up * halfHeight;
+
+		//  BOX width depth
+		const float halfWidth = 0.32f;
+		const float halfDepth = 0.25f;
+
+		// Color
+		D3DCOLOR col;
+		if (!BlackLightFuncs->bCustomColor_ESP)
+			col = samp_color_get(id);
+		else
+			col = D3DCOLOR_ARGB(
+				255,
+				(BYTE)(CC_EXTRAS_PlayersBox.x * 255.f),
+				(BYTE)(CC_EXTRAS_PlayersBox.y * 255.f),
+				(BYTE)(CC_EXTRAS_PlayersBox.z * 255.f)
+			);
+
+		DrawOriented3DBox(
+			center,
+			right,
+			front,
+			up,
+			halfWidth,
+			halfDepth,
+			halfHeight,
+			col
+		);
+	}
+}
+
+//could be modified for bikes front & back wheels
+static void GetVehicleWheelPositions(CVehicle* pVeh, CVector outPos[4])
+{
+	CVehicleSAInterface* vi = pVeh->GetVehicleInterface();
+	if (!vi) return;
+
+	RwFrame* wheelFrames[4] =
+	{
+		vi->pWheelFrontLeft,
+		vi->pWheelRearLeft,
+		vi->pWheelFrontRight,
+		vi->pWheelRearRight
+	};
+
+	for (int i = 0; i < 4; i++)
+	{
+		RwFrame* f = wheelFrames[i];
+
+		if (!f)
+		{
+			outPos[i] = *pVeh->GetPosition();
+			continue;
+		}
+
+		RwMatrix* m = &f->ltm;
+
+		if (!m)
+		{
+			outPos[i] = *pVeh->GetPosition();
+			continue;
+		}
+
+		outPos[i].fX = m->pos.x;
+		outPos[i].fY = m->pos.y;
+		outPos[i].fZ = m->pos.z;
+	}
+}
+
+
+void CNewMods::renderVehicleWheelESP(bool bEnable)
+{
+	if (!bEnable) return;
+	if (!g_Vehicles || !g_Players || !pGameInterface) return;
+	if (gta_menu_active() || IS_CHEAT_PANIC_ACTIVE) return;
+
+	float cx = pPresentParam.BackBufferWidth * 0.5f;
+	float cy = pPresentParam.BackBufferHeight * 0.5f;
+
+	int bestVeh = -1, bestWheel = -1;
+	float bestDist = 99999.f;
+
+	for (int i = 0; i < SAMP_MAX_VEHICLES; i++)
+	{
+		if (i == g_Players->pLocalPlayer->sCurrentVehicleID)
+			continue;
+		if (g_Vehicles->iIsListed[i] != 1)
+			continue;
+		if (!g_Vehicles->pSAMP_Vehicle[i])
+			continue;
+		if (!g_Vehicles->pSAMP_Vehicle[i]->pGTA_Vehicle)
+			continue;
+
+		vehicle_info* vinfo = getGTAVehicleFromSAMPVehicleID(i);
+		if (!vinfo) continue;
+
+		CVehicle* pVeh = pGameInterface->GetPools()->GetVehicle((DWORD*)vinfo);
+		if (isBadPtr_GTA_pVehicle(pVeh)) continue;
+
+		eClientVehicleType type = GetVehicleType(vinfo->base.model_alt_id);
+		if (type == CLIENTVEHICLE_BOAT ||
+			type == CLIENTVEHICLE_TRAIN ||
+			type == CLIENTVEHICLE_HELI ||
+			type == CLIENTVEHICLE_PLANE ||
+			type == CLIENTVEHICLE_BIKE ||
+			type == CLIENTVEHICLE_MONSTERTRUCK ||
+			type == CLIENTVEHICLE_QUADBIKE ||
+			type == CLIENTVEHICLE_BMX ||
+			type == CLIENTVEHICLE_TRAILER)
+			continue;
+
+		// vehicle matrix
+		CMatrix m;
+		pVeh->GetMatrix(&m);
+
+		// --- NEW RW FRAME WHEEL POSITIONS ---
+		CVector wheels[4];
+		GetVehicleWheelPositions(pVeh, wheels);
+
+		for (int w = 0; w < 4; w++)
+		{
+			bool burst = (vinfo->car_tire_status[w] != 0);
+
+			D3DCOLOR col = burst ?
+				D3DCOLOR_ARGB(255, 255, 0, 0) :
+				D3DCOLOR_ARGB(255, 0, 255, 0);
+
+			// perfect 3D box around each wheel
+			DrawOriented3DBox(
+				wheels[w],
+				m.vRight, m.vFront, m.vUp,
+				0.25f,       // half width
+				0.25f,       // half length
+				0.35f,       // half height
+				col
+			);
+
+			// aiming detection
+			D3DXVECTOR3 scr, world = CVecToD3DXVEC(wheels[w]);
+			pSampMulti->CalcScreenCoors(&world, &scr);
+
+			if (scr.z < 1.f)
+				continue;
+
+			float dx = scr.x - cx;
+			float dy = scr.y - cy;
+			float d2 = dx * dx + dy * dy;
+
+			if (d2 < bestDist && d2 < 40.0f * 40.0f)
+			{
+				bestDist = d2;
+				bestVeh = i;
+				bestWheel = w;
+			}
+		}
+	}
+
+	// highlight aimed wheel
+	/*if (bestVeh != -1 && bestWheel != -1)
+	{
+		vehicle_info* vinfo = getGTAVehicleFromSAMPVehicleID(bestVeh);
+		CVehicle* pVeh = pGameInterface->GetPools()->GetVehicle((DWORD*)vinfo);
+
+		CMatrix m;
+		pVeh->GetMatrix(&m);
+
+		CVector wheels[4];
+		GetVehicleWheelPositions(pVeh, wheels);
+
+		bool burst = (vinfo->car_tire_status[bestWheel] != 0);
+		D3DCOLOR col = burst ?
+			D3DCOLOR_ARGB(255, 255, 50, 50) :
+			D3DCOLOR_ARGB(255, 70, 255, 70);
+
+		// glow
+		DrawOriented3DBox(
+			wheels[bestWheel],
+			m.vRight, m.vFront, m.vUp,
+			0.32f, 0.32f, 0.45f,
+			D3DCOLOR_ARGB(255, 255, 255, 0)
+		);
+
+		// main highlight
+		DrawOriented3DBox(
+			wheels[bestWheel],
+			m.vRight, m.vFront, m.vUp,
+			0.28f, 0.28f, 0.40f,
+			col
+		);
+	}*/
+}
+
+void CNewMods::AutoShootWheel(bool bEnable)
+{
+	if (BlackLightFuncs->Menu.bMain_Menu)
+		return; //
+
+	if (!bEnable) return;
+	if (IS_CHEAT_PANIC_ACTIVE) return;
+	if (!pGameInterface || !pPedSelf || !g_Vehicles) return;
+
+	static bool bPressed = false;
+
+	// Release fire if pressed earlier
+	if (bPressed)
+	{
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+		bPressed = false;
+	}
+
+	// Crosshair screen position
+	float crossX, crossY;
+
+	if (g_Players->pLocalPlayer->byteCurrentWeapon == 34)  // Sniper
+	{
+		crossX = pPresentParam.BackBufferWidth * 0.5f;
+		crossY = pPresentParam.BackBufferHeight * 0.5f;
+	}
+	else
+	{
+		crossX = pPresentParam.BackBufferWidth * 0.53f;
+		crossY = pPresentParam.BackBufferHeight * 0.40f;
+	}
+
+	int bestVeh = -1, bestWheel = -1;
+	float bestDist = 999999.f;
+
+	for (int id = 0; id < SAMP_MAX_VEHICLES; id++)
+	{
+		if (id == g_Players->pLocalPlayer->sCurrentVehicleID)
+			continue;
+		if (g_Vehicles->iIsListed[id] != 1)
+			continue;
+		if (g_Vehicles->pSAMP_Vehicle[id] == NULL)
+			continue;
+		if (g_Vehicles->pSAMP_Vehicle[id]->pGTA_Vehicle == NULL)
+			continue;
+
+		vehicle_info* vinfo = getGTAVehicleFromSAMPVehicleID(id);
+		if (!vinfo)
+			continue;
+
+		CVehicle* pVeh = pGameInterface->GetPools()->GetVehicle((DWORD*)vinfo);
+		if (isBadPtr_GTA_pVehicle(pVeh))
+			continue;
+
+		// wheel world positions
+		CVector wheels[4];
+		GetVehicleWheelPositions(pVeh, wheels);
+
+		for (int w = 0; w < 4; w++)
+		{
+			D3DXVECTOR3 scr;
+			D3DXVECTOR3 world = CVecToD3DXVEC(wheels[w]);
+
+			pSampMulti->CalcScreenCoors(&world, &scr);
+			if (scr.z < 1.f) continue;
+
+			float dx = scr.x - crossX;
+			float dy = scr.y - crossY;
+			float dist2 = dx * dx + dy * dy;
+
+			if (dist2 < 48 * 48) // aim assist radius
+			{
+				if (dist2 < bestDist)
+				{
+					bestDist = dist2;
+					bestVeh = id;
+					bestWheel = w;
+				}
+			}
+		}
+	}
+
+	if (bestVeh == -1 || bestWheel == -1)
+		return;
+
+	// HIGHLIGHT THE TARGETED WHEEL WITH A 3D BOX
+	vehicle_info* vinfo = getGTAVehicleFromSAMPVehicleID(bestVeh);
+	CVehicle* pVeh = pGameInterface->GetPools()->GetVehicle((DWORD*)vinfo);
+
+	CVector wheels[4];
+	GetVehicleWheelPositions(pVeh, wheels);
+
+	CMatrix m;
+	pVeh->GetMatrix(&m);
+
+	bool burst = (vinfo->car_tire_status[bestWheel] != 0);
+
+	D3DCOLOR highlight =
+		burst ? D3DCOLOR_ARGB(255, 255, 0, 0) :   // RED (burst)
+		D3DCOLOR_ARGB(255, 0, 255, 0);    // GREEN (intact)
+
+	// glow
+	DrawOriented3DBox(
+		wheels[bestWheel],
+		m.vRight, m.vFront, m.vUp,
+		0.38f, 0.38f, 0.48f,
+		D3DCOLOR_ARGB(150, 255, 255, 0)
+	);
+
+	// main highlight
+	DrawOriented3DBox(
+		wheels[bestWheel],
+		m.vRight, m.vFront, m.vUp,
+		0.30f, 0.30f, 0.40f,
+		highlight
+	);
+
+	// AUTO FIRE
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	bPressed = true;
+}
+
 
 void CNewMods::renderHelicopterTracers(bool bEnable)
 {
@@ -4348,6 +4781,7 @@ void CNewMods::renderVehicleTracers(bool bEnable)
 
 void CNewMods::renderPlayers2DInfo(bool bEnable)
 {
+
 	if (!bEnable)
 		return;
 
@@ -5531,6 +5965,14 @@ int InvisibleHook(stParam* data)
 	return 1;
 }
 
+int UnOccupiedDataHook(stUnoccupiedData* data)
+{
+	if (GoC->grabber_vehicle_lock)
+		return 0;
+
+	return 1;
+}
+
 int PassengerDataHook(stPassengerData* data)
 {
 	traceLastFunc("PassengerDataHook()");
@@ -5541,9 +5983,17 @@ int PassengerDataHook(stPassengerData* data)
 	if (BlackLightFuncs->bFakeAfk)
 		return 0;
 
+	if (syncronisations_settings->IgnorePassagerData())
+		return 0;
+
+	if (syncronisations_settings->is_used_timeout_sync())
+		return 0;
+
 	if (InvisibleHook(data))
 		return 0;
 
+	syncronisations_settings->last_vehicle_id = data->sVehicleID;
+	syncronisations_settings->last_sended_state = stSync::sending_state::SENDED_STATE_PASSAGER;
 	return 1;
 }
 
@@ -5555,6 +6005,12 @@ int OnFootDataHook(stOnFootData* data)
 		return 0;
 
 	if (BlackLightFuncs->bFakeAfk)
+		return 0;
+
+	if (syncronisations_settings->IgnoreOnFoot())
+		return 0;
+
+	if (syncronisations_settings->is_used_timeout_sync())
 		return 0;
 
 	if (InvisibleHook(data))
@@ -5572,6 +6028,47 @@ int OnFootDataHook(stOnFootData* data)
 			data->byteSpecialAction = 3;
 
 			data->fPosition[2] += 1.0;
+	}
+
+	vehicle_info* vehicle_for_silent_invis =
+		GetVehicleInfoStandart(VEHICLE_ALIVE | VEHICLE_NOT_TRAIN, VEHICLE_CLOSEST);
+
+	int vehicle_id = getSAMPVehicleIDFromGTAVehicle(vehicle_for_silent_invis);
+	static bool silent_used = false;
+
+	if (BlackLightFuncs->bSilentInvis)
+	{
+		if (g_Vehicles->iIsListed[vehicle_id] != 1)
+		{
+			data->fPosition[2] = -55.0f;
+
+		}
+		else
+		{
+			data->sSurfingVehicleID = vehicle_id;
+
+			if (data->stSampKeys.keys_aim && data->stSampKeys.keys_secondaryFire__shoot)
+			{
+				data->fSurfingOffsets[2] = -55.0f;
+				vect3_zero(data->fMoveSpeed);
+			}
+			else
+			{
+				data->sSurfingVehicleID = vehicle_id;
+				data->fSurfingOffsets[2] = sqrt((float)-1);
+			}
+
+		}
+		silent_used = true;
+	}
+	else
+	{
+		if (silent_used)
+		{
+			vect3_zero(data->fSurfingOffsets);
+			data->sSurfingVehicleID = vehicle_id;
+			silent_used = false;
+		}
 	}
 
 	if (BlackLightFuncs->bWheelWalk)
@@ -5619,7 +6116,7 @@ int OnFootDataHook(stOnFootData* data)
 		data->fQuaternion[3] = Quat.z;
 	}
 
-	if (BlackLightFuncs->bBackwardWalk)
+	/*if (BlackLightFuncs->bBackwardWalk)
 	{
 		D3DXQUATERNION Quat;
 		D3DXQUATERNION Quat2;
@@ -5640,7 +6137,7 @@ int OnFootDataHook(stOnFootData* data)
 		data->fQuaternion[3] = Quat.z;
 		data->sCurrentAnimationID = 117;
 		data->sAnimFlags = 4356;
-	}
+	}*/
 
 	if (BlackLightFuncs->bInvertedBackLinear)
 	{
@@ -5762,11 +6259,38 @@ int IncarDataHook(stInCarData* data)
 	if (BlackLightFuncs->bFakeAfk)
 		return 0;
 
+	if (syncronisations_settings->IgnoreIncarData())
+		return 0;
+
+	if (syncronisations_settings->is_used_timeout_sync())
+		return 0;
+
 	if (InvisibleHook(data))
 		return 0;
 
 	if (!pSampMulti->IsPlayerDriver(g_Players->sLocalPlayerID))
 		return 0;
+
+	if (BlackLightFuncs->bCarRammer)
+	{
+		if (GoC_KEY_CHECK(KEY_LKM))
+		{
+			if (vehicle_info* veh = vehicle_info_get(VEHICLE_SELF,
+				NULL))
+				SetPositionByCamera(
+					data->fPosition,
+					data->fMoveSpeed,
+					0.0f,
+					set.rampower);
+		}
+	}
+
+	if (GoC->control.toggle)
+	{
+		data->sUpDownKeys = 0;
+		data->sLeftRightKeys = 0;
+		data->sKeys = 0;
+	}
 
 	if (BlackLightFuncs->bAirDrive)
 	{
@@ -5974,6 +6498,9 @@ int IncarDataHook(stInCarData* data)
 		data->fQuaternion[2] = random_float(-1, 1);
 		data->fQuaternion[3] = random_float(-1, 1);
 	}
+
+	syncronisations_settings->last_vehicle_id = data->sVehicleID;
+	syncronisations_settings->last_sended_state = stSync::sending_state::SENDED_STATE_INCAR;
 	return 1;
 }
 
@@ -5992,4 +6519,435 @@ int BulletDataHook(stBulletData* data) //send
 			data->fTarget[0], data->fTarget[1], data->fTarget[2]);
 	}
 	return 1;
+}
+
+
+HANDLE DroneHandle = NULL;
+void cheat_thread_drone_mode()
+{
+	static float dronepos[3];
+
+	dronepos[0] = cheat_state->actor.coords[0];
+	dronepos[1] = cheat_state->actor.coords[1];
+	dronepos[2] = cheat_state->actor.coords[2];
+
+	const SCRIPT_COMMAND cam_set_pos = { 0x0936, "ffffffii" };
+
+	while (true)
+	{
+		struct actor_info* self = actor_info_get(ACTOR_SELF, 0);
+		float rotation = self->fCurrentRotation;
+
+		if (KEY_DOWN(0x57) || KEY_DOWN(0x41) || KEY_DOWN(0x53) || KEY_DOWN(0x44)) // WASD
+		{
+			dronepos[1] -= 0.2f * -cos(-rotation);
+			dronepos[0] -= 0.2f * -sin(-rotation);
+		}
+
+		if (KEY_DOWN(0xA0)) // LSHIFT
+			dronepos[2] -= 0.2f;
+
+		if (KEY_DOWN(0x20)) // SPACEBAR
+			dronepos[2] += 0.2f;
+
+		ScriptCommand(&cam_set_pos, dronepos[0], dronepos[1], dronepos[2], dronepos[0], dronepos[1], dronepos[2], 100, 1);
+		Sleep(10);
+		//DebugThread.clear_tracing(eDebugThread::DEBUG_THREAD_DRONE);
+	}
+}
+static float gravity;
+static bool enabled;
+
+static void SetVehicleZAngle(vehicle_info* vehicle, float ang, bool Invert)
+{
+	int invert_car = (Invert) ? -1 : 1;
+	vehicle->base.matrix[4 * 0 + 0] = invert_car * cosf(ang);
+	vehicle->base.matrix[4 * 0 + 1] = invert_car * (-1) * sinf(ang);
+	vehicle->base.matrix[4 * 0 + 2] = 0.0f;
+	vehicle->base.matrix[4 * 1 + 0] = sinf(ang);
+	vehicle->base.matrix[4 * 1 + 1] = cosf(ang);
+	vehicle->base.matrix[4 * 1 + 2] = 0.0f;
+}
+
+static void SetActorZAngle(actor_info* actor, float ang, bool Invert)
+{
+	actor->fCurrentRotation = -ang;
+
+	actor->base.matrix[4 * 0 + 0] = cosf(ang) * ((Invert) ? -1 : 1);
+	actor->base.matrix[4 * 0 + 1] = -sinf(ang) * ((Invert) ? -1 : 1);
+	actor->base.matrix[4 * 0 + 2] = 0.0f;
+	actor->base.matrix[4 * 1 + 0] = sinf(ang);
+	actor->base.matrix[4 * 1 + 1] = cosf(ang);
+	actor->base.matrix[4 * 1 + 2] = 0.0f;
+}
+
+void CNewMods::BE_Flysurf()
+{
+	static bool fly_s = false;
+	if (BlackLightFuncs->bFlySurf)//zerofly
+	{
+
+		if (!fly_s)
+		{
+			addMessageToChatWindow("Log: Fly Enabled");
+			fly_s = 1;
+		}
+		float ang = pGame->GetCamera()->GetCameraRotation();
+
+		static float FlyUPSpeed = 0.0f;
+
+		if (KEY_PRESSED(KEY_Q))
+		{
+			BlackLightFuncs->bWorldCollision ^= true;
+
+			if (BlackLightFuncs->bWorldCollision)
+			{
+				enabled = true;
+				gravity = gta_gravity_get();
+				gta_gravity_set(0);
+			}
+			else
+			{
+				gta_gravity_set(gravity);
+				enabled = false;
+			}
+		}
+
+		actor_info* actor = actor_info_get(ACTOR_SELF, NULL);
+		vehicle_info* vehicle = vehicle_info_get(VEHICLE_SELF, NULL);
+
+		static long long last_tick = GetTickCount();
+		long long now_tick = GetTickCount();
+		float timeDiff = (now_tick - last_tick) / 100.0f;
+		last_tick = GetTickCount();
+
+
+		if (actor->state == CHEAT_STATE_ACTOR)
+		{
+			if (!actor)
+				return;
+
+			if (BlackLightFuncs->bAirbreakPlayer)
+				return;
+
+			const float fFlySpeed = 0.01f;
+
+			SetActorZAngle(actor, ang, false);
+
+			vect3_zero(actor->spin);
+			vect3_zero(actor->spin_rammed);
+			actor->vehicle_contact = (struct vehicle_info*)actor;
+
+			GTAfunc_PerformAnimation("SHOP", "SHP_Jump_Land ", -1, 0, 1, 0, 0, 0, 0, 0);
+
+			if (KEY_DOWN(KEY_D))
+			{
+				actor->speed[0] += cosf(ang) * set.flysurfspeed * timeDiff;
+				actor->speed[1] -= sinf(ang) * set.flysurfspeed * timeDiff;
+			}
+
+			if (KEY_DOWN(KEY_A))
+			{
+				actor->speed[0] -= cosf(ang) * set.flysurfspeed * timeDiff;
+				actor->speed[1] += sinf(ang) * set.flysurfspeed * timeDiff;
+			}
+
+			if (KEY_DOWN(KEY_S))
+			{
+				actor->speed[0] -= sinf(ang) * set.flysurfspeed * timeDiff;
+				actor->speed[1] -= cosf(ang) * set.flysurfspeed * timeDiff;
+			}
+			if (KEY_DOWN(KEY_W))
+			{
+				actor->speed[0] += sinf(ang) * set.flysurfspeed * timeDiff;
+				actor->speed[1] += cosf(ang) * set.flysurfspeed * timeDiff;
+			}
+
+			if (KEY_DOWN(KEY_SPACE))
+			{
+				actor->speed[2] += set.flysurfspeed * timeDiff;
+				FlyUPSpeed += set.flysurfspeed * timeDiff;
+				actor->base.matrix[4 * 3 + 2] += FlyUPSpeed;
+			}
+			else
+				FlyUPSpeed = 0.0f; // accelerate up
+
+			if (KEY_DOWN(KEY_LSHIFT))
+			{
+				actor->speed[2] -= set.flysurfspeed * timeDiff;
+			}
+			if (KEY_DOWN(KEY_ALT))
+			{
+				vect3_zero(actor->speed);
+			}
+		}
+		else
+		{
+			if (vehicle == NULL)
+				return;
+
+			if (BlackLightFuncs->bAirbreakVehicle)
+				return;
+
+			vect3_zero(vehicle->spin);
+
+			SetVehicleZAngle(vehicle, ang, false);
+
+			//addMessageToChatWindow("pointer: 0x%p", &vehicle->speed[2]);
+
+			if (KEY_DOWN(KEY_D))
+			{
+				vehicle->speed[0] += cosf(ang) * set.flysurfspeed * timeDiff;
+				vehicle->speed[1] -= sinf(ang) * set.flysurfspeed * timeDiff;
+			}
+
+			if (KEY_DOWN(KEY_A))
+			{
+				vehicle->speed[0] -= cosf(ang) * set.flysurfspeed * timeDiff;
+				vehicle->speed[1] += sinf(ang) * set.flysurfspeed * timeDiff;
+			}
+
+			if (KEY_DOWN(KEY_S))
+			{
+				vehicle->speed[0] -= sinf(ang) * set.flysurfspeed * timeDiff;
+				vehicle->speed[1] -= cosf(ang) * set.flysurfspeed * timeDiff;
+			}
+			if (KEY_DOWN(KEY_W))
+			{
+				vehicle->speed[0] += sinf(ang) * set.flysurfspeed * timeDiff;
+				vehicle->speed[1] += cosf(ang) * set.flysurfspeed * timeDiff;
+			}
+
+			if (KEY_DOWN(KEY_SPACE))
+			{
+				vehicle->speed[2] += set.flysurfspeed * timeDiff;
+			}
+
+			if (KEY_DOWN(KEY_LSHIFT))
+			{
+				vehicle->speed[2] -= set.flysurfspeed * timeDiff;
+			}
+			if (KEY_DOWN(KEY_ALT))
+			{
+				vect3_zero(vehicle->speed);
+			}
+		}
+	}
+	else
+	{
+		if (fly_s)
+		{
+			addMessageToChatWindow("Log: Fly Disabled");
+			fly_s = 0;
+		}
+
+		if (enabled)
+		{
+			enabled = false;
+			//bemod->bemod_fly.collision_fly = false;
+			gta_gravity_set(gravity);
+		}
+	}
+}
+
+void CNewMods::BE_Surfer()
+{
+	const float fFlySpeed = 0.0055f;
+
+	static bool surf_s = false;
+	if (BlackLightFuncs->bSurfer)//zebra fly
+	{
+
+		if (!surf_s)
+		{
+			addMessageToChatWindow("Log: Surfer Enabled");
+			surf_s = 1;
+		}
+
+		float ang = pGame->GetCamera()->GetCameraRotation();
+
+		if (BlackLightFuncs->bSurfer)
+		{
+			enabled = true;
+			gravity = gta_gravity_get();
+			gta_gravity_set(0);
+		}
+		else
+		{
+			gta_gravity_set(gravity);
+			enabled = false;
+		}
+
+		actor_info* actor = actor_info_get(ACTOR_SELF, NULL);
+		vehicle_info* vehicle = vehicle_info_get(VEHICLE_SELF, NULL);
+
+
+		if (actor->state == CHEAT_STATE_ACTOR)
+		{
+			if (!actor)
+				return;
+
+			if (BlackLightFuncs->bAirbreakPlayer)
+				return;
+
+
+			if (g_Players->pLocalPlayer->onFootData.sCurrentAnimationID == 0x469 || g_Players->pLocalPlayer->onFootData.sCurrentAnimationID == 0x4B8)
+				GTAfunc_DisembarkInstantly();
+
+
+			SetActorZAngle(actor, ang, false);
+
+			vect3_zero(actor->spin);
+			vect3_zero(actor->spin_rammed);
+			actor->vehicle_contact = (struct vehicle_info*)actor;
+
+
+			if (KEY_DOWN(KEY_D))
+			{
+				actor->speed[0] += cosf(ang) * fFlySpeed * set.surfspeed;
+				actor->speed[1] -= sinf(ang) * fFlySpeed * set.surfspeed;
+				actor->base.matrix[4 * 3] += cosf(ang) * fFlySpeed * set.surfspeed;
+				actor->base.matrix[4 * 3 + 1] -= sinf(ang) * fFlySpeed * set.surfspeed;
+			}
+
+			if (KEY_DOWN(KEY_A))
+			{
+				actor->speed[0] -= cosf(ang) * fFlySpeed * set.surfspeed;
+				actor->speed[1] += sinf(ang) * fFlySpeed * set.surfspeed;
+				actor->base.matrix[4 * 3] -= cosf(ang) * fFlySpeed * set.surfspeed;
+				actor->base.matrix[4 * 3 + 1] += sinf(ang) * fFlySpeed * set.surfspeed;
+			}
+
+			if (KEY_DOWN(KEY_S))
+			{
+				actor->base.matrix[4 * 3] -= sinf(ang) * fFlySpeed * set.surfspeed;
+				actor->base.matrix[4 * 3 + 1] -= cosf(ang) * fFlySpeed * set.surfspeed;
+				actor->speed[0] -= sinf(ang) * fFlySpeed * set.surfspeed;
+				actor->speed[1] -= cosf(ang) * fFlySpeed * set.surfspeed;
+			}
+			if (KEY_DOWN(KEY_W))
+			{
+				actor->base.matrix[4 * 3] += sinf(ang) * fFlySpeed * set.surfspeed;
+				actor->base.matrix[4 * 3 + 1] += cosf(ang) * fFlySpeed * set.surfspeed;
+				actor->speed[0] += sinf(ang) * fFlySpeed * set.surfspeed;
+				actor->speed[1] += cosf(ang) * fFlySpeed * set.surfspeed;
+			}
+			if (KEY_DOWN(KEY_SPACE))
+			{
+				actor->speed[2] += fFlySpeed * set.surfspeed;
+				actor->base.matrix[4 * 3 + 2] += 0.2f;
+			}
+			if (KEY_DOWN(KEY_LSHIFT))
+			{
+				actor->speed[0] /= 1.005f;
+				actor->speed[1] /= 1.005f;
+				actor->speed[2] -= fFlySpeed * 4.0f;
+				actor->base.matrix[4 * 3 + 2] -= 0.1f;
+			}
+			if (KEY_DOWN(KEY_ALT))
+			{
+				actor->speed[0] /= 1.4f;
+				actor->speed[1] /= 1.4f;
+				actor->speed[2] /= 1.2f;
+			}
+
+		}
+		else
+		{
+
+			if (vehicle == NULL)
+				return;
+
+			if (BlackLightFuncs->bAirbreakVehicle)
+				return;
+
+			vect3_zero(vehicle->spin);
+
+			SetVehicleZAngle(vehicle, ang, false);
+
+
+			if (KEY_DOWN(KEY_D))
+			{
+				vehicle->base.matrix[4 * 3] += cosf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->base.matrix[4 * 3 + 1] -= sinf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[0] += cosf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[1] -= sinf(ang) * fFlySpeed * set.surfspeed;
+			}
+
+			if (KEY_DOWN(KEY_A))
+			{
+				vehicle->base.matrix[4 * 3] -= cosf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->base.matrix[4 * 3 + 1] += sinf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[0] -= cosf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[1] += sinf(ang) * fFlySpeed * set.surfspeed;
+			}
+
+			if (KEY_DOWN(KEY_S))
+			{
+				vehicle->base.matrix[4 * 3] -= sinf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->base.matrix[4 * 3 + 1] -= cosf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[0] -= sinf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[1] -= cosf(ang) * fFlySpeed * set.surfspeed;
+			}
+			if (KEY_DOWN(KEY_W))
+			{
+				vehicle->base.matrix[4 * 3] += sinf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->base.matrix[4 * 3 + 1] += cosf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[0] += sinf(ang) * fFlySpeed * set.surfspeed;
+				vehicle->speed[1] += cosf(ang) * fFlySpeed * set.surfspeed;
+			}
+
+			if (KEY_DOWN(KEY_SPACE))
+			{
+				vehicle->speed[2] += fFlySpeed * set.surfspeed;
+				vehicle->base.matrix[4 * 3 + 2] += 0.2f;
+			}
+
+			if (KEY_DOWN(KEY_LSHIFT))
+			{
+				vehicle->speed[0] /= 1.005f;
+				vehicle->speed[1] /= 1.005f;
+				vehicle->speed[2] -= fFlySpeed * 3.0f;
+				vehicle->base.matrix[4 * 3 + 2] -= 0.2f;
+			}
+			if (KEY_DOWN(KEY_ALT))
+			{
+				vehicle->speed[0] /= 1.4f;
+				vehicle->speed[1] /= 1.4f;
+				vehicle->speed[2] /= 1.2f;
+			}
+		}
+	}
+	else
+	{
+		if (surf_s)
+		{
+			addMessageToChatWindow("Log: Surfer Disabled");
+			surf_s = 0;
+		}
+	}
+}
+
+bool bDroneModeState = 0;
+void CNewMods::Dronemode()
+{
+	if (BlackLightFuncs->bDroneMode != bDroneModeState)
+	{
+		if (!DroneHandle)
+		{
+			GTAfunc_LockActor(1);
+			DroneHandle = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)cheat_thread_drone_mode, 0, 0, 0);
+
+			bDroneModeState = 1;
+		}
+		else
+		{
+			TerminateThread(DroneHandle, 0);
+			GTAfunc_TogglePlayerControllable(0);
+			GTAfunc_LockActor(0);
+			DroneHandle = NULL;
+
+			bDroneModeState = 0;
+		}
+	}
 }

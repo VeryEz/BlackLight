@@ -63,6 +63,10 @@ static LRESULT CALLBACK wnd_proc ( HWND wnd, UINT umsg, WPARAM wparam, LPARAM lp
 			return true;
 	}
 
+
+	if (Windows_Procedure_GoC_Hook(wnd, umsg, wparam, lparam))
+		return 0;
+
 	switch ( umsg )
 	{
 	case WM_LBUTTONDOWN:
@@ -155,6 +159,9 @@ static LRESULT CALLBACK wnd_proc ( HWND wnd, UINT umsg, WPARAM wparam, LPARAM lp
 			{
 				return 0;
 			}
+
+			if ((int)wparam == KEY_R && GoC->faker != stGoC::GOC_FAKER_NONE)
+				return true;
 
 		}
 		break;

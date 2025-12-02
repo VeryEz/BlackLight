@@ -444,6 +444,7 @@ BOOL APIENTRY DllMain ( HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpRese
 			FreeLibrary( g_hOrigDll );
 			g_hOrigDll = NULL;
 			menu_free_all();
+			memset(&BlackLightFuncs[0], 0, sizeof(stNewFunctions));
 			ini_free();
 			Log( "Exited\n" );
 			if(g_SAMP) LogChatbox( true, "Logging ended" );

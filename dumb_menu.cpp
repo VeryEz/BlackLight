@@ -55,14 +55,11 @@
 #define ID_CHEAT_MODS						40
 #define ID_CHEAT_PROT						50
 #define ID_CHEAT_UNLOCK						80
-#define ID_CHEAT_WEATHER					90
-#define ID_CHEAT_TIME						100
 #define ID_CHEAT_HP							110
 #define ID_CHEAT_ARMOR						120
 #define ID_CHEAT_GRAVITY					130
 #define ID_CHEAT_HANDLING					170
 #define ID_CHEAT_KEEP_TRAILER				180
-#define ID_CHEAT_CUSTOM_RUNSTYLE			210
 
 #define ID_CHEAT_INVULN_ACTOR				0
 #define ID_CHEAT_INVULN_VEHICLE				1
@@ -339,7 +336,7 @@ static void menu_players_vehwarp_populate ( struct menu *menu )
 	if ( g_Players == NULL )
 		return;
 
-	char text[64];
+	char	text[64];
 	int		i;
 	for ( i = 0; i < SAMP_MAX_PLAYERS; i++ )
 	{
@@ -811,12 +808,6 @@ static int menu_callback_cheats ( int op, struct menu_item *item )
 		case ID_CHEAT_PROT:
 			return cheat_state->vehicle.protection;
 
-		case ID_CHEAT_WEATHER:
-			return set.force_weather == (int)( UINT_PTR ) item->data;
-
-		case ID_CHEAT_TIME:
-			return set.force_hour == (int)( UINT_PTR ) item->data;
-
 		case ID_CHEAT_HP:
 			return 0;
 
@@ -829,8 +820,6 @@ static int menu_callback_cheats ( int op, struct menu_item *item )
 		case ID_CHEAT_KEEP_TRAILER:
 			return cheat_state->vehicle.keep_trailer_attached;
 
-		case ID_CHEAT_CUSTOM_RUNSTYLE:
-			return set.custom_runanimation_enabled;
 		}
 		break;
 
@@ -850,26 +839,8 @@ static int menu_callback_cheats ( int op, struct menu_item *item )
 			cheat_state->vehicle.protection ^= 1;
 			break;
 
-		case ID_CHEAT_WEATHER:
-			if ( set.force_weather == (int)(UINT_PTR) item->data )
-				set.force_weather = -1;
-			else
-				set.force_weather = (int)( UINT_PTR ) item->data;
-			break;
-
-		case ID_CHEAT_TIME:
-			if ( set.force_hour == (int)(UINT_PTR) item->data )
-				set.force_hour = -1;
-			else
-				set.force_hour = (int)( UINT_PTR ) item->data;
-			break;
-
 		case ID_CHEAT_KEEP_TRAILER:
 			cheat_state->vehicle.keep_trailer_attached ^= 1;
-			break;
-
-		case ID_CHEAT_CUSTOM_RUNSTYLE:
-			set.custom_runanimation_enabled ^= 1;
 			break;
 
 		default:
@@ -891,7 +862,7 @@ static int menu_callback_cheats ( int op, struct menu_item *item )
 			menu_item_name_set( item, "Gravity: %.04f", gta_gravity_get() );
 			return 1;
 
-		case ID_CHEAT_CUSTOM_RUNSTYLE:
+		/*case ID_CHEAT_CUSTOM_RUNSTYLE:
 			set.custom_runanimation_id += mod;
 			if ( set.custom_runanimation_id >= MOVE_ANIMATIONS_COUNT )
 				set.custom_runanimation_id = 0;
@@ -899,7 +870,7 @@ static int menu_callback_cheats ( int op, struct menu_item *item )
 				set.custom_runanimation_id = (MOVE_ANIMATIONS_COUNT-1);
 			menu_item_name_set( item, "Custom running style: %i, %s", set.custom_runanimation_id,
 										move_animations[set.custom_runanimation_id].moveStyleName );
-			return 1;
+			return 1;*/
 		} // end of INC/DEC
 	}
 
@@ -1436,7 +1407,7 @@ static int menu_callback_routes ( int op, struct menu_item *item )
 	if ( op == MENU_OP_ENABLED )
 	{
 		if ( item->id == ID_ROUTES_ACTIVATED )
-			//return set.recording_activated;
+			return set.recording_activated;
 		return 0;
 	}
 	if ( op == MENU_OP_SELECT )
@@ -1444,7 +1415,7 @@ static int menu_callback_routes ( int op, struct menu_item *item )
 		switch ( item->id )
 		{
 		case ID_ROUTES_ACTIVATED:
-			//set.recording_activated ^= 1;
+			set.recording_activated ^= 1;
 			break;
 		case ID_ROUTES_WRITE:
 			rec_sqlite_writeTable();
@@ -2227,7 +2198,7 @@ void menu_maybe_init ( void )
 	{
 		menu_item_add( menu_main, NULL, "\tSA-MP", ID_NONE, MENU_COLOR_SEPARATOR, NULL );
 		menu_item_add( menu_main, menu_players, "Players", ID_NONE, MENU_COLOR_DEFAULT, NULL );
-		snprintf( name, sizeof(name), "Fav. server list (%d/%d)", iServersCount, INI_SERVERS_MAX );
+		//snprintf( name, sizeof(name), "Fav. server list (%d/%d)", iServersCount, INI_SERVERS_MAX );
 		menu_item_add( menu_main, menu_sampmisc, "SA:MP Misc.", ID_NONE, MENU_COLOR_DEFAULT, NULL );
 	}
 
@@ -2238,8 +2209,8 @@ void menu_maybe_init ( void )
 	menu_item_add( menu_cheats, menu_cheats_inv, "Invulnerable", ID_CHEAT_INVULN, MENU_COLOR_DEFAULT, NULL );
 	menu_item_add( menu_cheats, NULL, "Gravity: 0.0080", ID_CHEAT_GRAVITY, MENU_COLOR_DEFAULT, NULL );
 	menu_item_add( menu_cheats, NULL, "Misc. protections", ID_CHEAT_PROT, MENU_COLOR_DEFAULT, NULL );
-	snprintf( name, sizeof(name), "Custom running style: %i, ", set.custom_runanimation_id );
-	menu_item_add( menu_cheats, NULL, name, ID_CHEAT_CUSTOM_RUNSTYLE, MENU_COLOR_DEFAULT, NULL );
+	//snprintf( name, sizeof(name), "Custom running style: %i, ", set.custom_runanimation_id );
+	//menu_item_add( menu_cheats, NULL, name, ID_CHEAT_CUSTOM_RUNSTYLE, MENU_COLOR_DEFAULT, NULL );
 
 	/* main menu -> cheats -> invulnerable */
 	menu_item_add( menu_cheats_inv, NULL, "Actor invulnerability", ID_CHEAT_INVULN_ACTOR, MENU_COLOR_DEFAULT, NULL );

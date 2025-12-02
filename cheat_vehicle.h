@@ -28,12 +28,13 @@ void	cheat_handle_vehicle_air_brake ( struct vehicle_info *info, double time_dif
 //void	cheat_handle_vehicle_slowTeleport ( struct vehicle_info *vehicle_info, float time_diff );
 void	cheat_handle_vehicle_warp ( struct vehicle_info *info, float time_diff );
 void	cheat_handle_vehicle_nitro ( struct vehicle_info *info, float time_diff );
-void	cheat_handle_vehicle_stick ( struct vehicle_info *info, float time_diff );
+//void	cheat_handle_vehicle_stick ( struct vehicle_info *info, float time_diff );
 void	cheat_handle_vehicle_quick_turn ( struct vehicle_info *info, float time_diff );
 void	cheat_handle_vehicle_protection ( struct vehicle_info *info, float time_diff );
 void	cheat_handle_vehicle_brake ( struct vehicle_info *info, double time_diff );
 void	cheat_handle_vehicle_hop ( struct vehicle_info *info, float time_diff );
 void	cheat_vehicle_air_brake_set ( int enabled );
+void cheat_handle_vehicle_autoFlip(struct vehicle_info* info, float time_diff);
 void	cheat_handle_vehicle_engine ( struct vehicle_info *vehicle_info, float time_diff );
 void	cheat_handle_vehicle_brakedance ( struct vehicle_info *vehicle_info, float time_diff );
 void	cheat_handle_vehicle_blinking_carlights ( struct vehicle_info *vehicle_info, float time_diff );

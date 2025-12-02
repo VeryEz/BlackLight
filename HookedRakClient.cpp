@@ -49,6 +49,10 @@ bool HookedRakClientInterface::Send(BitStream * bitStream, PacketPriority priori
 		if (!IncarDataHook((stInCarData*)(bitStream->GetData() + 1)))
 			return 0;
 
+	if (packetId == PacketEnumeration::ID_UNOCCUPIED_SYNC)
+		if (!UnOccupiedDataHook((stUnoccupiedData*)(bitStream->GetData() + 1)))
+			return 0;
+
 	if (packetId == PacketEnumeration::ID_PASSENGER_SYNC)
 		if (!PassengerDataHook((stPassengerData*)(bitStream->GetData() + 1)))
 			return 0;

@@ -1046,6 +1046,32 @@ static void renderPlayerTags ( void )
 		render->D3DBox( g_playerTagInfo[iGTAID].tagPosition.fX + 1.0f + ESP_tag_player_D3DBox_pixelOffsetX,
 						playerBaseY + 1.0f + offY, hpbar - 2.0f, 8.0f, COLOR_RED(240) );
 
+		if ((GoC->faker != stGoC::GOC_FAKER_NONE) && (iSAMPID == GoC->faker_target) 
+			|| (GoC->faker != stGoC::GOC_FAKER_NONE) && (iSAMPID == set.fPlayerID))
+		{
+			// Define a static variable to keep track of the color phase
+			static int rainbowPhase = 0;
+
+			// Increment the rainbow phase and loop back to 0 after a full cycle
+			rainbowPhase = (rainbowPhase + 1) % 360;
+
+			// Convert the rainbow phase to a color using an HSV to RGB conversion for a smooth transition
+			D3DCOLOR blicker_color = D3DCOLOR_XRGB(
+				int(127.5f * (1 + sin(rainbowPhase * 3.14159f / 180.0f))),  // Red
+				int(127.5f * (1 + sin((rainbowPhase + 120) * 3.14159f / 180.0f))),  // Green
+				int(127.5f * (1 + sin((rainbowPhase + 240) * 3.14159f / 180.0f)))  // Blue
+			);
+
+			// Draw the D3DBox
+			render->D3DBoxBorder(g_playerTagInfo[iGTAID].tagPosition.fX + 1.0f + ESP_tag_player_D3DBox_pixelOffsetX + 1.0f, playerBaseY - 40.0f + offY, 98.0f, 20.0f, D3DCOLOR_ARGB(255, 0, 0, 0), blicker_color);
+
+			// Draw the text inside the D3DBox
+			pD3DFont_sampStuff->PrintShadow(g_playerTagInfo[iGTAID].tagPosition.fX + ESP_tag_player_D3DBox_pixelOffsetX + 5.0f, // Adjusted X position to fit within the box
+				playerBaseY - 40.0f + offY, // Adjusted Y position to fit within the box
+				COLOR_WHITE(255), "GoC Target");
+		}
+
+
 		if (BlackLightFuncs->bFriendTags)
 		{
 			if (BlackLightFuncs->bIsFriend[iSAMPID])
@@ -1777,7 +1803,6 @@ static void renderImGui(void)
 
 	if (!g_SAMP)
 		return;
-
 	if (GetAsyncKeyState(VK_F5) < 0)
 		return;
 
@@ -1923,8 +1948,7 @@ void texturesInitResources ( IDirect3DDevice9 *pDevice, D3DPRESENT_PARAMETERS *p
 {
 	traceLastFunc( "texturesInitResources()" );
 
-	if ( BlackLightFuncs->bSpeedometer
-	 &&	 (
+	if ((
 			 fopen(set.speedometer_speedo_png_filename, "rb") == NULL
 	 ||	 fopen(set.speedometer_needle_png_filename, "rb") == NULL
 	 ) )
@@ -1932,8 +1956,6 @@ void texturesInitResources ( IDirect3DDevice9 *pDevice, D3DPRESENT_PARAMETERS *p
 		Log( "Could not find the speedometer files, disabling it." );
 		BlackLightFuncs->bSpeedometer = false;
 	}
-	else if (BlackLightFuncs->bSpeedometer)
-	{
 		// init speedo
 		tSpeedoPNG = NULL;
 		sSpeedoPNG = NULL;
@@ -1951,7 +1973,7 @@ void texturesInitResources ( IDirect3DDevice9 *pDevice, D3DPRESENT_PARAMETERS *p
 		needlePos.y = ( pPresentationParameters->BackBufferHeight / 768.0f );
 		speedoPos.x = ( 750.0f * needlePos.x );
 		speedoPos.y = pPresentationParameters->BackBufferHeight - ( 292.0f * needlePos.y );
-	}
+	
 	// ret
 }
 
@@ -1970,13 +1992,11 @@ void proxyID3DDevice9_Reset ( void )
 	SAFE_RELEASE( chams_blue );
 	SAFE_RELEASE( chams_red );
 
-	if (BlackLightFuncs->bSpeedometer)
-	{
+
 		SAFE_RELEASE( sSpeedoPNG );
 		SAFE_RELEASE( tSpeedoPNG );
 		SAFE_RELEASE( sNeedlePNG );
 		SAFE_RELEASE( tNeedlePNG );
-	}
 	
 	// death texture
 	SAFE_RELEASE( pSpriteTexture );

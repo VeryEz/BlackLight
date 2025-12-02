@@ -23,13 +23,25 @@
 #include "main.h"
 
 #define SAMP_DLL		"samp.dll"
-#define SAMP_CMP		"F8036A004050518D4C24"//"0000889E33020000FF15" r4
 
+#ifdef SAMP_R1
+#define SAMP_CMP		"F8036A004050518D4C24"
+#endif
+
+#ifdef SAMP_R5
+#define SAMP_CMP "C07406889E3402000088"
+#endif
 
 //randomStuff
 extern int						iViewingInfoPlayer;
 int								g_iCursorEnabled = 0;
-char							g_m0dCmdlist[(SAMP_MAX_CLIENTCMDS - 22)][30];
+#ifdef SAMP_R1
+char										g_m0dCmdlist[(SAMP_MAX_CLIENTCMDS - 22)][30];
+#endif
+
+#ifdef SAMP_R5
+char										g_m0dCmdlist[(SAMP_MAX_CLIENTCMDS - 23)][30];
+#endif
 int								g_m0dCmdNum = 0;
 
 // global samp pointers
@@ -147,8 +159,15 @@ void getSamp()
 		{
 			if (memcmp_safe((uint8_t *) g_dwSAMP_Addr + 0xBABE, hex_to_bin(SAMP_CMP), 10))
 			{
+#ifdef SAMP_R1
 				strcpy(g_szSAMPVer, "SA:MP 0.3.7");
 				Log("%s was detected. g_dwSAMP_Addr: 0x%p", g_szSAMPVer, g_dwSAMP_Addr);
+#endif
+#ifdef SAMP_R5
+				strcpy(g_szSAMPVer, "SA:MP 0.3.7 R5");
+				Log("%s was detected. g_dwSAMP_Addr: 0x%p", g_szSAMPVer, g_dwSAMP_Addr);
+#endif
+				
 				sampPatchDisableAnticheat();
 				iIsSAMPSupported = 1;
 			}
@@ -1315,45 +1334,64 @@ const char* CSampMulti::GetNumberOfProcessorsF(void)
 const char* CSampMulti::RadioUpdateSongTitle(HSTREAM Stream)
 {
 	const char* meta = BASS_ChannelGetTags(Stream, BASS_TAG_META);
-	if (meta) { // got Shoutcast metadata
-		const char* p = strstr(meta, "StreamTitle='"); // locate the title
-		if (p) {
-			const char* p2 = strstr(p, "';"); // locate the end of it
-			if (p2) {
-				char* t = _strdup(p + 13);
-				t[p2 - (p + 13)] = 0;
-				return pSampMulti->SetText(t);
+	if (meta)
+	{
+		const char* p = strstr(meta, "StreamTitle='");
+		if (p)
+		{
+			const char* p2 = strstr(p, "';");
+			if (p2)
+			{
+				// Extract substring safely with formatting
+				size_t len = p2 - (p + 13);
+
+				if (len > 0 && len < 500)
+				{
+					char title[512] = { 0 };
+					strncpy(title, p + 13, len);
+					title[len] = 0;
+
+					return pSampMulti->SetText("%s", title);
+				}
 			}
 		}
 	}
-	else {
+	else
+	{
 		meta = BASS_ChannelGetTags(Stream, BASS_TAG_OGG);
-		if (meta) { // got Icecast/OGG tags
+		if (meta)
+		{
 			const char* artist = NULL, * title = NULL, * p = meta;
-			for (; *p; p += strlen(p) + 1) {
-				if (!_strnicmp(p, "artist=", 7)) // found the artist
-					artist = p + 7;
-				if (!_strnicmp(p, "title=", 6)) // found the title
-					title = p + 6;
+
+			for (; *p; p += strlen(p) + 1)
+			{
+				if (!_strnicmp(p, "artist=", 7)) artist = p + 7;
+				if (!_strnicmp(p, "title=", 6)) title = p + 6;
 			}
-			if (title) {
-				if (artist) {
+
+			if (title)
+			{
+				if (artist)
 					return pSampMulti->SetText("%s - %s", artist, title);
-				}
 				else
 					return pSampMulti->SetText("%s", title);
 			}
 		}
-		else {
+		else
+		{
 			meta = BASS_ChannelGetTags(Stream, 0x14000);
-			if (meta) { // got HLS segment info
+			if (meta)
+			{
 				const char* p = strchr(meta, ',');
-				if (p) return p + 1;
+				if (p)
+					return pSampMulti->SetText("%s", p + 1);
 			}
 		}
 	}
+
 	return "N/A";
 }
+
 
 bool CSampMulti::AreNumbersIdentical(const char* text_to_scan, const char* text_for_scan)
 {
@@ -2033,7 +2071,7 @@ void CSampMulti::DeleteAdmin(int PlayerID)
 		return;
 
 	if (PlayerID != g_Players->sLocalPlayerID && g_Players->pRemotePlayer[PlayerID] == NULL)
-		return addMessageToChatWindowSS("Error: something is wrong with id(%d), try another one", PlayerID);
+		return addMessageToChatWindowSS("Error: player not found", PlayerID);
 
 	if (!BlackLightFuncs->bIsAdmin[PlayerID])
 		return addMessageToChatWindow("Player %s(%d) isn't in your admin list.", getPlayerName(PlayerID), PlayerID);
@@ -2045,9 +2083,9 @@ void CSampMulti::DeleteAdmin(int PlayerID)
 	std::string strUpdatedLine;
 	std::string strCurrentLine;
 
-	snprintf(filename, sizeof(filename), "%s\\" M0D_FOLDER "%s", g_szWorkingDirectory, "admins.ini");
+	snprintf(filename, sizeof(filename), "%s\\" M0D_NAME "%s", g_szWorkingDirectory, "admins.ini");
 	inputFile.open(filename, std::ios::in);
-	snprintf(filename, sizeof(filename), "%s\\" M0D_FOLDER "%s", g_szWorkingDirectory, "admins_temp.ini");
+	snprintf(filename, sizeof(filename), "%s\\" M0D_NAME "%s", g_szWorkingDirectory, "admins_temp.ini");
 	outputFile.open(filename);
 	strUpdatedLine += "";
 	while (std::getline(inputFile, strCurrentLine))
@@ -2061,9 +2099,9 @@ void CSampMulti::DeleteAdmin(int PlayerID)
 	inputFile.close();
 	outputFile.close();
 
-	snprintf(filename, sizeof(filename), "%s\\" M0D_FOLDER "%s", g_szWorkingDirectory, "admins_temp.ini");
+	snprintf(filename, sizeof(filename), "%s" M0D_NAME "%s", g_szWorkingDirectory, "admins_temp.ini");
 	inputFile.open(filename, std::ios::in);
-	snprintf(filename, sizeof(filename), "%s\\" M0D_FOLDER "%s", g_szWorkingDirectory, "admins.ini");
+	snprintf(filename, sizeof(filename), "%s" M0D_NAME "%s", g_szWorkingDirectory, "admins.ini");
 	outputFile.open(filename);
 
 	while (std::getline(inputFile, strCurrentLine))
@@ -2390,18 +2428,6 @@ void CSampMulti::SayPlayerInfo(int iPlayerID)
 
 const char* CSampMulti::getServerIp(void)
 {
-	if (!g_SAMP)
-		return nullptr;
-	
-	if (!g_dwSAMP_Addr)
-		return nullptr;
-
-	if (g_SAMP->iGameState != GAMESTATE_CONNECTED)
-	{
-		cheat_state_text("You're not connected to any server!");
-		return nullptr;
-	}
-
 	return pSampMulti->SetText("%s:%d", g_SAMP->szIP, g_SAMP->ulPort);
 }
 
@@ -3283,30 +3309,19 @@ bool CSampMulti::IsVehicleStreamed(uint16_t vehicleID)
 	return true;
 }
 
-const char* szDevs[6] =
-{
-	"_=Gigant=_.",
-	"_=Gigant=_",
-	"_)Gigant(_",
-	"(Gigant)",
-	"._=Gigant=_.",
-	"(_Gigant_)"
-};
-
 bool CSampMulti::IsModDeveloper(int PlayerID)
 {
 	if (g_Players == NULL || PlayerID < 0 || PlayerID > SAMP_MAX_PLAYERS)
 		return false;
 
-	for (int idevs = 0; idevs < std::size(szDevs); idevs++)
-		if (strcmp(getPlayerName(PlayerID), szDevs[idevs]) == 0) //||
-			/*strcmp(getPlayerName(PlayerID), "_=Gigant=_") == 0 ||
-			strcmp(getPlayerName(PlayerID), "_)Gigant(_") == 0 ||
-			strcmp(getPlayerName(PlayerID), "[=Gigant=]") == 0 ||
-			strcmp(getPlayerName(PlayerID), "(Gigant)") == 0 ||
-			strcmp(getPlayerName(PlayerID), "._=Gigant=_.") == 0 ||
-			strcmp(getPlayerName(PlayerID), "(_Gigant_)") == 0)*/
-			return true;
+	if (strcmp(getPlayerName(PlayerID), "_=Gigant=_.") == 0 ||
+		strcmp(getPlayerName(PlayerID), "_=Gigant=_") == 0 ||
+		strcmp(getPlayerName(PlayerID), "_)Gigant(_") == 0 ||
+		strcmp(getPlayerName(PlayerID), "[=Gigant=]") == 0 ||
+		strcmp(getPlayerName(PlayerID), "(Gigant)") == 0 ||
+		strcmp(getPlayerName(PlayerID), "._=Gigant=_.") == 0 ||
+		strcmp(getPlayerName(PlayerID), "(_Gigant_)") == 0)
+		return true;
 
 	return false;
 }
@@ -3540,7 +3555,7 @@ void CSampMulti::AddSongOnStart(const char* szSongName)
 			if (filesc > 0)
 				this->ClearFile("BlackLight\\SongOnStart.txt");
 
-			this->WriteToFile("BlackLight\\SongOnStart.txt", pSampMulti->SetText("%s%s", MOD_FOLDER_MP3, szSongName));
+			this->WriteToFile("BlackLight\\SongOnStart.txt", pSampMulti->SetText("BlackLight\\MP3\\%s", szSongName));
 		    addMessageToChatWindow("Added %s as starting song", szSongName);
 		}
 		else
@@ -3550,7 +3565,7 @@ void CSampMulti::AddSongOnStart(const char* szSongName)
 		}
 	}
 	else
-		addMessageToChatWindow("Some song must be active to add it as song which will be played when game starts");
+		addMessageToChatWindow("Song must be active to add it as song which will be played when the game starts");
 }
 
 void CSampMulti::BASS_PlaySongFromFile(const char* szSong, bool bRepeat, float volume)

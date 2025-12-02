@@ -1,21 +1,6 @@
 #pragma once
-
-#define ID_MENU_SPECIAL_ACTION_NONE				0
-#define ID_MENU_SPECIAL_ACTION_USEJETPACK		2
-#define ID_MENU_SPECIAL_ACTION_DANCE1			5
-#define ID_MENU_SPECIAL_ACTION_DANCE2			6
-#define ID_MENU_SPECIAL_ACTION_DANCE3			7
-#define ID_MENU_SPECIAL_ACTION_DANCE4			8
-#define ID_MENU_SPECIAL_ACTION_HANDSUP			10
-#define ID_MENU_SPECIAL_ACTION_USECELLPHONE		11
-#define ID_MENU_SPECIAL_ACTION_STOPUSECELLPHONE 13
-#define ID_MENU_SPECIAL_ACTION_DRINK_BEER		20
-#define ID_MENU_SPECIAL_ACTION_SMOKE_CIGGY		21
-#define ID_MENU_SPECIAL_ACTION_DRINK_WINE		22
-#define ID_MENU_SPECIAL_ACTION_DRINK_SPRUNK		23
-#define ID_MENU_SPECIAL_ACTION_CUFFED			24
-#define ID_MENU_SPECIAL_ACTION_CARRY			25
-#define ID_MENU_SPECIAL_ACTION_URINATE			68
+//_=Gigant=_ was here 
+#define INVALID					0xFFFF
 
 #define MAX_SPRINT_ENERGY 3147.0f
 #define FUNC_SA_DEFAULT_GRAVITY 0.0080
@@ -115,6 +100,8 @@ public:
 	void NoReload(bool bEnable);
 	void FastCrosshair(bool bEnable);
 	void AutoShoot(bool bEnable);
+	void AutoShootWheel(bool bEnable);
+	void MoveAllNearbyVehicles_MASS(bool bEnable);
     void SampFastConnect(bool bEnable); //standalone func loaded into cheat.cpp
 	void DisableWaterWaves(bool bEnable);
 	void CustomTimeWeatherSet(bool bEnableCustomTime, bool bEnableCustomWeather);
@@ -138,8 +125,6 @@ public:
 	void PizdarvankaVehicle(bool bEnable);
 	void FakeKillFlood(bool bEnable);
 	void FakeBulletsFlood(bool bEnable);
-	void GodModePlayer(bool bEnable);
-	void GodModeVehicle(bool bEnable);
 	void SkinChanger(bool bEnable);
 	void VehicleWheelsVisibilityPulsator(bool bEnable);
 	void CarHardFlip(bool bEnable);
@@ -148,7 +133,9 @@ public:
 	void FollowTroll(void);
 	void VehiclesFugga(void);
 	void RecolorVehicles(void);
-
+	void Dronemode(void);
+	void BE_Surfer(void);
+	void BE_Flysurf();
 	//Rainbow
 	void RainbowVehicle(bool bEnable);
 	void RainbowSky(bool bEnable);
@@ -161,6 +148,8 @@ public:
 	void RainbowNicknames(bool bEnable);
 
 	//esp
+	void renderPlayer3DBox(bool bEnable);
+	void renderVehicleWheelESP(bool bEnable);
 	void renderDriverInfo(bool bEnable);
 	void renderShowDoorsStatus(bool bEnable);
 	void renderPlayersTracers(bool bEnable);
@@ -189,6 +178,7 @@ private:
 };
 extern class CNewMods* pBlackLightMods;
 
+int UnOccupiedDataHook(stUnoccupiedData* data);
 int  PassengerDataHook(stPassengerData* data);
 int  OnFootDataHook(stOnFootData* data);
 int  IncarDataHook(stInCarData* data);

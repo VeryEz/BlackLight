@@ -27,12 +27,17 @@ struct gta_cheat
 };
 
 int		cheat_panic ( void );
-void	cheat_prevent_freeze ( void );
 void	cheat_teleport ( const float pos[3], int interior_id );
 void	cheat_teleport_nearest_car ( void );
 void	cheat_handle_misc ( void );
 void	cheat_handle_spoof_weapon ( void );
+void cheat_handle_stick(struct vehicle_info* vehicle_info, struct actor_info* actor_info, float time_diff);
 void	cheat_handle_weapon_disable ( void );
+void cheat_handle_player_jump(struct actor_info* ainfo, float time_diff);
+//void cheat_handle_player_frontflip(struct actor_info* ainfo, float time_diff);
+void cheat_handle_inverted_walk(float time_diff);
+void cheat_handle_walk_on_water(float time_diff);
+void cheat_handle_player_frontbackflip(struct actor_info* ainfo, float time_diff);
 void	cheat_handle_freeze_vehicles ( struct vehicle_info *vehicle_info, struct actor_info *actor_info );
 void	cheat_handle_hp ( struct vehicle_info *vehicle_info, struct actor_info *actor_info, float time_diff );
 void	cheat_handle_weapon ( void );

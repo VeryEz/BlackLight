@@ -38,7 +38,7 @@ enum eRecordingState
 	// All reverse play states [rev states need to be after other play states]
 	RECORDING_PLAY_REV,
 	RECORDING_PLAY_REV_CUSTOMSPEED,
-} ;
+};
 
 // generic sqlite functions
 int sqliteDB_checkTableExists ( sqlite3 *db, char *tableName );
@@ -54,6 +54,4 @@ bool rec_sqlite_dropTable ( char *tableName );
 bool rec_sqlite_writeTable ();
 bool rec_sqlite_optimizeDatabase ();
 void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff );
-
-extern bool rec_continueAfterFin;
 #endif

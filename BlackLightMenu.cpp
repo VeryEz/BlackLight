@@ -1,4 +1,8 @@
-#include "main.h"
+﻿#include "main.h"
+#include <imgui_internal.h>
+#include <thread>
+
+//_=Gigant=_ was here 
 
 ImVec4
 ImColorRed = ImVec4(0.882f, 0.035f, 0.066f, 1.000f),
@@ -13,14 +17,13 @@ ImColorSlider = ImVec4(0.348f, 0.348f, 0.348f, 0.557f),
 ImColorSliderHovered = ImVec4(0.428f, 0.428f, 0.428f, 0.577f),
 ImColorSliderActive  = ImVec4(0.552f, 0.552f, 0.552f, 0.761f),
 ImColorSliderGrab = ImVec4(0.033f, 0.597f, 0.488f, 1.000f),
-ImColorSliderGrabActive = ImVec4(0.013f, 0.652f, 0.662f, 1.000f),
-ImColorAqua = ImVec4(0.010f, 0.550f, 0.620f, 1.000f),
-ImColorBlue = ImVec4(0.010f, 0.390f, 0.550f, 1.000f);
+ImColorSliderGrabActive = ImVec4(0.013f, 0.652f, 0.662f, 1.000f);
 
+ImVec4 goc_MainFuncs_border, goc_FakerFuncs_border, goc_Syncs_border;
 
 CBlackLightMenu* pMenu;
 int menus = 0, inner_menus = 0;
-static HSTREAM sample;
+static HSAMPLE sample;
 
 std::fstream radio_file; //radio file read
 std::fstream file_friends; //friends file read
@@ -59,23 +62,29 @@ static float getFPS()
 
 void CBlackLightMenu::Initialize_ImGui_Menus(void)
 { 
+	traceLastFunc("Initialize_ImGui_Menus(void)");
+
+
     this->ImBlackLightMenu();
 	this->ImBlackLightHud(BlackLightFuncs->Menu.bImGuiHudMenu);
 	this->ImScoreboard(BlackLightFuncs->Menu.bImScoreboad);
-	this->ImInitBlackLight_AudioStreamPlayer(BlackLightFuncs->Menu.bImSAMPAudioStream);
-	this->ImMenuInit_RouteRecording(BlackLightFuncs->bVehicleRecordingEnable);
 
 	this->ImFriendsAndAdminsMenu(BlackLightFuncs->Menu.bImFriendAndAdminsMenu);
 	this->ImInitBlackLightPlayersTags(BlackLightFuncs->Menu.ESPMenus.bImBlackLightPlayersTags);
 	this->ImInitBlackLightPlayersInfo(BlackLightFuncs->Menu.ESPMenus.bImBlackLightPlayersInfo);
 	this->ImInitBlakcLightRadioVolume(BlackLightFuncs->Menu.bRadioVolume);
-	this->ImInitBlackLight_NewSpeedometer(BlackLightFuncs->Menu.bImMenuNewSpeedometer);
+   this->ImInitBlackLight_NewSpeedometer(BlackLightFuncs->Menu.bImMenuNewSpeedometer);
 	this->ImInitBlackLight_DamagerMenu();
-	this->ImInitBlackLight_BotInfoIDMenu(g_BotFuncs->BotSettings.bShowBotInfoID);
-}
-
+	this->ImInitBlackLight_GoCMenu();
+	this->ImInitBlackLight_RenderBotUI3D();
+	//this->ImInitBlackLight_BotInfoIDMenu(g_BotFuncs->BotSettings.bShowBotInfoID);
+}				
+static float posXOffset = 0.0f;
+static float posYOffset = 0.0f;
+static float posZOffset = 0.0f;
 void CBlackLightMenu::ImBlackLightMenu(void)
 {
+	traceLastFunc("ImBlackLightMenu(void)");
 	if (BlackLightFuncs->Menu.bMain_Menu == true)
 	{
 		static bool bCheckInfoChildWindowFocus = false;
@@ -148,15 +157,13 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				pMenu->AddMenu("Server Joiner", MENU_ADDON_SERVERS);
 				pMenu->AddMenu("Spectate Players", MENU_ADDON_SPECTATE_PLAYERS);
 				pMenu->AddMenu("Targer Info", MENU_ADDON_TARGET_INFO);
-				pMenu->AddMenu("Spammer", MENU_ADDON_SPAMMER);
+				//pMenu->AddMenu("Spammer", MENU_ADDON_SPAMMER);
 				ImGui::PopStyleColor(3);
 
 				pMenu->AddMenuText("Other Functions");
 				ImGui::PushFont(pFontArialV2);
 				pMenu->AddButton(&BlackLightFuncs->Menu.bImGuiDemoWindow, "ImGui Demo##AddonFunc1");
 				pMenu->AddItemDescription("ImGui window");
-				pMenu->AddButton(&BlackLightFuncs->Menu.bImSAMPAudioStream, "AudioStream Player");
-				pMenu->AddItemDescription("Allows you to play radio stream links in game using\nsamp network system.", ImColorGreen);
 				pMenu->AddButton(&BlackLightFuncs->bClickWarp, "Click Warp##AddonFunc1a");
 				pMenu->AddItemDescription("press Middle Mouse Button to warp");
 				pMenu->AddButton(&BlackLightFuncs->bQuickWarp, "Quick Warp##AddonFunc1b");
@@ -698,7 +705,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 					}
 					if (ImGui::Button(szGetSong.c_str(), pMenu->MenuItemMatchMenuWidth()))
 					{
-						if (!bSelectedSong) 
+						if (!bSelectedSong)
 							bSelectedSong = true;
 
 						if (BASS_ChannelIsActive(radio_channel))
@@ -708,32 +715,35 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 						}
 						if (BASS_ChannelIsActive(mp3_channel))
 						{
-							BASS_StreamFree(sample);
+							BASS_SampleFree(sample);
 							BASS_ChannelStop(mp3_channel);
 						}
 
 						__MP3.current_playing_song = szGetSong.c_str();
 
-						BASS_Init(-1, 44100, BASS_DEVICE_DSOUND, GetActiveWindow(), NULL);
-						mp3_channel = BASS_StreamCreateFile(FALSE, mp3_files.path().string().c_str(), 0,0, /*__MP3.bMP3LoopSong ? BASS_SAMPLE_LOOP | BASS_UNICODE : */ 
-							BASS_STREAM_PRESCAN | BASS_STREAM_AUTOFREE);
-						BASS_ChannelPlay(mp3_channel, TRUE);
+						std::thread([mp3_files]()
+							{
+								BASS_Init(-1, 44100, BASS_DEVICE_CPSPEAKERS, GetActiveWindow(), NULL);
+								sample = BASS_SampleLoad(false, mp3_files.path().string().c_str(), 0, 0, 1, __MP3.bMP3LoopSong ? BASS_SAMPLE_LOOP : BASS_SAMPLE_MONO);
+								mp3_channel = BASS_SampleGetChannel(sample, FALSE);
+								BASS_ChannelPlay(mp3_channel, FALSE);
 
-						if (inner_menus != MENU_INFO_MUSIC) inner_menus = MENU_INFO_MUSIC;
+								if (inner_menus != MENU_INFO_MUSIC) inner_menus = MENU_INFO_MUSIC;
 
-						QWORD len = BASS_ChannelGetLength(mp3_channel, BASS_POS_BYTE); // the length in bytes
-						DWORD time = BASS_ChannelBytes2Seconds(mp3_channel, len);// * 1000; // get time
+								QWORD len = BASS_ChannelGetLength(mp3_channel, BASS_POS_BYTE); // the length in bytes
+								DWORD time = BASS_ChannelBytes2Seconds(mp3_channel, len);// * 1000; // get time
 
-					   snprintf(mp3_duration, sizeof(mp3_duration) -1, "%u:%02u", time / 60, time % 60);
-						
-						if (BlackLightFuncs->Menu.bImGuiHudMenu)
-						{
-							if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_MUSIC)
-								set.BlackLight.menu_hud_set = MOD_HUD_MENU_MUSIC;
-						}
-						else addMessageToChatWindow("Listening: %s", __MP3.current_playing_song.c_str());
-						pSampMulti->WriteToFile("BlackLight\\MusicLogs.txt", pSampMulti->SetText("[%s]Played: %s", pSampMulti->GetCurrentTimeA().c_str(), __MP3.current_playing_song.c_str()));
-						addMessageToChatWindow("Song Length: %s", mp3_duration);
+								snprintf(mp3_duration, sizeof(mp3_duration) - 1, "%u:%02u", time / 60, time % 60);
+
+								if (BlackLightFuncs->Menu.bImGuiHudMenu)
+								{
+									if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_MUSIC)
+										set.BlackLight.menu_hud_set = MOD_HUD_MENU_MUSIC;
+								}
+								else addMessageToChatWindow("Listening: %s", __MP3.current_playing_song.c_str());
+								pSampMulti->WriteToFile("BlackLight\\MusicLogs.txt", pSampMulti->SetText("[%s]Played: %s", pSampMulti->GetCurrentTimeA().c_str(), __MP3.current_playing_song.c_str()));
+								addMessageToChatWindow("Song Length: %s", mp3_duration);
+							}).detach();
 					}
 					ImGui::PopStyleColor(4);
 					ImGui::PopStyleVar(2);
@@ -773,9 +783,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 						{
 							if (ImGui::Button(radio_urls.c_str(), pMenu->MenuItemMatchMenuWidth()))
 							{
-								addMessageToChatWindow("Please wait, loading radio url....");
-
-								if (BASS_ChannelIsActive(mp3_channel)) //stop mp3 channel
+								if (BASS_ChannelIsActive(mp3_channel))
 								{
 									if (strlen(mp3_duration))
 										ZeroMemory(mp3_duration, sizeof(mp3_duration));
@@ -786,24 +794,31 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 								BASS_SampleFree(sample);
 
 								if (BASS_ChannelIsActive(radio_channel))
-									BASS_ChannelStop(radio_channel); //stop radio channel
+									BASS_ChannelStop(radio_channel);
+
 								BASS_StreamFree(radio_channel);
 
-								BASS_Init(-1, 44100, BASS_DEVICE_CPSPEAKERS, GetActiveWindow(), NULL);
-								radio_channel = BASS_StreamCreateURL(radio_urls.c_str(), 0, BASS_STREAM_BLOCK | BASS_STREAM_STATUS | BASS_STREAM_AUTOFREE, NULL, 0); // open URL
-								BASS_ChannelPlay(radio_channel, FALSE);
+								addMessageToChatWindow("Please wait, loading radio url....");
+								std::thread([radio_urls]()
+									{
+
+										BASS_Init(-1, 44100, BASS_DEVICE_CPSPEAKERS, GetActiveWindow(), NULL);
+										radio_channel = BASS_StreamCreateURL(radio_urls.c_str(), 0,
+											BASS_STREAM_BLOCK | BASS_STREAM_STATUS | BASS_STREAM_AUTOFREE,
+											NULL, 0);
+
+										BASS_ChannelPlay(radio_channel, FALSE);
+
+										addMessageToChatWindow("Listening: %s",
+											pSampMulti->RadioUpdateSongTitle(radio_channel));
+
+									}).detach(); // thread auto-cleans
 
 								if (inner_menus != MENU_INFO_RADIO) inner_menus = MENU_INFO_RADIO;
 
-								if (BlackLightFuncs->Menu.bImGuiHudMenu)
-								{
-									if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_RADIO)
-										set.BlackLight.menu_hud_set = MOD_HUD_MENU_RADIO;
-								}
-								else
-								{
-									addMessageToChatWindow("Listening: %s", pSampMulti->RadioUpdateSongTitle(radio_channel));
-								}
+								if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_RADIO)
+									set.BlackLight.menu_hud_set = MOD_HUD_MENU_RADIO;
+
 							}
 							pMenu->AddItemDescription(radio_urls.c_str());
 							if (ImGui::IsItemClicked(ImGuiMouseButton_Middle)) //mmb mouse to delete url
@@ -898,7 +913,13 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 					ImGui::SameLine();
 					ImGui::ColorEdit3("##PlayersBonesCustomColor1", (float*)&CC_EXTRAS_PlayersBones, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
 				}
-				pMenu->AddButton(&BlackLightFuncs->bPlayerBox, "Players Box##ESPFunc5", BlackLightFuncs->bCustomColor_ESP ? 30.0f : 0.0f);
+				pMenu->AddButton(&BlackLightFuncs->bPlayer3DBoxes, "Players 3D Box##ESPFunc5", BlackLightFuncs->bCustomColor_ESP ? 30.0f : 0.0f);
+				if (BlackLightFuncs->bCustomColor_ESP)
+				{
+					ImGui::SameLine();
+					ImGui::ColorEdit3("##PlayersBox3DCustomColor1dd", (float*)&CC_EXTRAS_PlayersBox, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+				}
+				pMenu->AddButton(&BlackLightFuncs->bPlayerBox, "Players Box##ESPFunc5a", BlackLightFuncs->bCustomColor_ESP ? 30.0f : 0.0f);
 				if (BlackLightFuncs->bCustomColor_ESP)
 				{
 					ImGui::SameLine();
@@ -907,6 +928,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				pMenu->AddButton(&BlackLightFuncs->bVehicleInfo, "Vehicle Info##ESPFunc6");
 				pMenu->AddButton(&BlackLightFuncs->bVehicle2DInfo_MyCarInclude, "Vehicle Info My Car##ESPFunc6a");
 				pMenu->AddSlider("##VehicleInfoDrawDistance", set.BlackLight.vehicle_2d_info_distance_draw, 0.0f, MAX_DISTANCE_ESP_DRAW, "%.1f");
+				pMenu->AddButton(&BlackLightFuncs->bWheelESP, "Wheels ESP##ESPFun");
 
 				pMenu->AddButton(&BlackLightFuncs->bVehicleTracers, "Vehicle Tracers##ESPFunc7", BlackLightFuncs->bCustomColor_ESP ? 30.0f : 0.0f);
 				if (BlackLightFuncs->bCustomColor_ESP)
@@ -1030,7 +1052,6 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
 				pMenu->AddMenu("Money", MENU_PLAYER_MONEY);
-				pMenu->AddMenu("Special Actions", MENU_PLAYER_ANIMS);
 				pMenu->AddMenu("Deathmatch", MENU_PLAYER_DEATHMATCH);
 				pMenu->AddMenu("Weapons", MENU_PLAYER_WEAPONS);
 				pMenu->AddMenu("Fast Anims", MENU_PLAYER_FAST_ANIMS);
@@ -1042,10 +1063,28 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				pMenu->AddMenu("Go To Players", MENU_PLAYER_WARP);
 				pMenu->AddItemDescription("Works on outstreamed players too.\n(if same world)");
 				pMenu->AddMenu("Bot Functions", MENU_PLAYER_BOTS);
+			//	pMenu->AddMenu("Stick Mod troll", MENU_PLAYER_STICKMOD);
 				ImGui::PopStyleColor(3);
-				pMenu->AddMenuText("Other Functions");
 
 				ImGui::PushFont(pFontArialV2);
+
+				pMenu->AddMenuText("Breakdance Stuff");
+			//	pMenu->AddItemDescription("");
+
+				pMenu->AddButton(&BlackLightFuncs->bPlayerHop, "Jump Player");
+				pMenu->AddItemDescription("Press 'B' to jump with player");
+				pMenu->AddSlider("##Hopforce", set.player_hop_force, 1.0f, 12.0f, "%.1f");
+
+				pMenu->AddButton(&BlackLightFuncs->bFrontnBackFlip, "Front & Back Flip");
+				pMenu->AddItemDescription("Press 'Q' to do front flip\nPress 'E' to do back flip");
+
+				pMenu->AddMenuText("Other Functions");
+				//pMenu->AddButton(&BlackLightFuncs->bWalkOnWater, "Walk on water");
+
+				pMenu->AddButton(&BlackLightFuncs->bCustomRunAnim, BlackLightFuncs->bCustomRunAnim ?
+					pSampMulti->SetText("%s",move_animations[set.custom_runanimation_id].moveStyleName) : "Custom Run Animation", BlackLightFuncs->bCustomRunAnim ? 70.0f : 0.0f);
+				pMenu->AddIncDecButtons(set.custom_runanimation_id, 1, MOVE_ANIMATIONS_COUNT - 1, (MOVE_ANIMATIONS_COUNT - MOVE_ANIMATIONS_COUNT));
+
 				ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 				ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
@@ -1053,12 +1092,12 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
 				if (ImGui::Button("Self Kill##SelfKillFunc", pMenu->MenuItemMatchMenuWidth()))
 				{
-					if (pPedSelf->GetHealth() == 0.0f)
-						break;
-
-					if (pSampMulti->IsOurPlayerInCar())
-						addMessageToChatWindow("You must be on foot!");
-					else pPedSelf->SetHealth(0.0f);
+					if (pPedSelf->GetHealth() != 0.0f)
+					{
+						/*if (pSampMulti->IsOurPlayerInCar())
+							addMessageToChatWindow("You must be on foot!");
+						else */pPedSelf->SetHealth(0.0f);
+					}
 				}
 				if (ImGui::Button("Restore Health##BtnResHP1", pMenu->MenuItemMatchMenuWidth()))
 				{
@@ -1118,17 +1157,38 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 					cheat_teleport_nearest_car();
 				}
 				ImGui::PopStyleColor(3);
+			//	pMenu->AddButton(&BlackLightFuncs->bFirstPerson, "First Person Mod##PlayerFunc0bbc");
 
-				pMenu->AddButton(&BlackLightFuncs->bGodModePlayer, "God Mod Player##PlayerFunc0");
-				pMenu->AddButton(&BlackLightFuncs->bGodModeHeliBlade, "God Mod Heli Blade##PlayerFunc0a");
-				pMenu->AddButton(&BlackLightFuncs->bGodModeVehicle, "God Mod Vehicle##PlayerFunc0b");
+				ImGui::PushStyleColor(ImGuiCol_Text, cheat_state->_generic.hp_cheat == 1 ? ImColorGreen : ImColorRed);
+				if(pMenu->AddStaticButton("God Mod Main"))
+				{
+					if (cheat_state->_generic.hp_cheat == 1)
+					{
+						addMessageToChatWindow("Disabled God Mode");
+						BlackLightFuncs->bGodModMain = cheat_state->_generic.hp_cheat = 0;
+					}
+					else if(cheat_state->_generic.hp_cheat == 0)
+					{
+						addMessageToChatWindow("Enabled God Mode");
+						BlackLightFuncs->bGodModMain = cheat_state->_generic.hp_cheat = 1;
+					}
+				}
+				ImGui::PopStyleColor(1);
+				pMenu->AddItemDescription(cheat_state->_generic.hp_cheat == 1 ? "On" : "Off");
+				//pMenu->AddButton(&BlackLightFuncs->bGodModeHeliBlade, "God Mod Heli Blade##PlayerFunc0a");
+				pMenu->AddButton(&BlackLightFuncs->bGodModePlayer, "Invulnerable Player");
+				pMenu->AddItemDescription(BlackLightFuncs->bGodModMain ? "Enabled" : "God Mode Main needs to active");
+				pMenu->AddButton(&BlackLightFuncs->bGodModeVehicle, "Invulnerable Vehicle");
+				pMenu->AddItemDescription(BlackLightFuncs->bGodModMain ? "Enabled" : "God Mode Main needs to active");
+				ImGui::Separator();
 				pMenu->AddButton(&BlackLightFuncs->bActorNoFall, "No Fall##PlayerFunc0c");
 				pMenu->AddButton(&BlackLightFuncs->bPlayerGhost, "Player Ghost##PlayerFunc1");
 				pMenu->AddButton(&BlackLightFuncs->bVehicleNoCollision, "Vehicle No Collision##PlayerFunc1a");
 				pMenu->AddButton(&BlackLightFuncs->bObjectsNoCollision, "Objects No Collision##PlayerFunc1b");
-
+				pMenu->AddButton(&BlackLightFuncs->bSurfer, "Surfer v2##PlayerFuncSurfer");
+				pMenu->AddButton(&BlackLightFuncs->bFlySurf, "Flysurf");
 				pMenu->AddButton(&BlackLightFuncs->bSmartInvis, "Invisible##PlayerFunc1c");
-
+				pMenu->AddButton(&BlackLightFuncs->bSilentInvis, "Silent Invis##PlayerFunc0ccc");
 				pMenu->AddButton(&BlackLightFuncs->bCameraOverview, "Camera Overview##PlayerFunc2");
 				pMenu->AddSlider("##fSetCameraOverview", set.BlackLight.fCamOverview, 1.0f, 108.7f, "%.1f");
 
@@ -1163,18 +1223,18 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				pMenu->AddButton(&BlackLightFuncs->bBackwardWalk, "Moon Walk##PlayerFunc10a");
 				pMenu->AddButton(&BlackLightFuncs->bFakeAfk, "Fake AFK##PlayerFunc10b");
 				pMenu->AddItemDescription("other players see you AFK.\nNote: some stuff won't be synced.");
-				pMenu->AddButton(&BlackLightFuncs->bFreezePlayers, "Freeze Players##PlayerFunc10c");
-				pMenu->AddItemDescription("a.k.a 'Moveless Players' ");
+				pMenu->AddButton(&BlackLightFuncs->bFreezePlayers, "Easier Hit##PlayerFunc10c");
+				pMenu->AddItemDescription("they move slower allowing you to hit them easier ");
 				pMenu->AddButton(&BlackLightFuncs->bFastRotation, "Fast Rotation##PlayerFunc11");
 				pMenu->AddSlider("##fSetFastRotationSpeed", set.BlackLight.fFastRotation, 1.0f, 40.0f, "%.1f");
-
+				
 				pMenu->AddButton(&BlackLightFuncs->bAirbreakPlayer, "Airbrake##PlayerFunc12");
 				pMenu->AddSlider("##fSetAirbrakePlayerSpeed", set.air_brake_speed, 1.0f, 300.0f, "%.1f");
 
 				pMenu->AddButton(&BlackLightFuncs->bPlayerFly, "Player Fly##PlayerFunc13");
 				pMenu->AddSlider("##fSetPlayerFlySpeed", set.fly_player_speed, 1.0f, 10.0f, "%.1f");
-				pMenu->AddSlider("##iPlayerFlyStyle", set.BlackLight.player_fly_style, 1, 3);
-				pMenu->AddItemDescription("set player fly style");
+			//	pMenu->AddSlider("##iPlayerFlyStyle", set.BlackLight.player_fly_style, 1, 3);
+				//pMenu->AddItemDescription("set player fly style");
 
 				pMenu->AddButton(&BlackLightFuncs->bPlayerSurf, "Player Surf##PlayerFunc14");
 				pMenu->AddButton(&BlackLightFuncs->bDroneMode, "Drone View##PlayerFunc14a");
@@ -1207,61 +1267,6 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				pMenu->AddButton(&BlackLightFuncs->bNoReload, "No Reload##DMFunc5");
 				pMenu->AddButton(&BlackLightFuncs->bFastCrosshair, "Fast Crosshair##DMFunc6");
 				pMenu->AddButton(&BlackLightFuncs->bAutoShoot, "Auto Shoot##DMFunc7");
-
-				break;
-			}
-
-			case MENU_PLAYER_ANIMS:
-			{
-				//pMenu->AddButton(&BlackLightFuncs->bSpecialActionAnims, "Enable Special Actions");
-				//pMenu->AddItemDescription("Enable this, then select some anims from below.");
-				pMenu->AddMenuText("Anims");
-
-				if (pMenu->AddStaticButton(ICON_FA_STOP " STOP ANY ANIM " ICON_FA_STOP))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_NONE;
-				if (pMenu->AddStaticButton(ICON_FA_CAT " CARRY " ICON_FA_CAT))
-				{
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_NONE;
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_CARRY;
-				}
-				if (pMenu->AddStaticButton(ICON_FA_LOCK " CUFFED " ICON_FA_LOCK))
-				{
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_NONE;
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_CUFFED;
-				}
-				if (pMenu->AddStaticButton(ICON_FA_FROG " URINATE " ICON_FA_FROG))
-				{
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_NONE;
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DRINK_SPRUNK;
-				}
-				if (pMenu->AddStaticButton(ICON_FA_MUSIC " DANCE 1 " ICON_FA_MUSIC))
-				{
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_NONE;
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DANCE1;
-				}
-				if (pMenu->AddStaticButton(ICON_FA_MUSIC " DANCE 2 " ICON_FA_MUSIC))
-				{
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_NONE;
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DANCE2;
-				}
-					if (pMenu->AddStaticButton(ICON_FA_MUSIC " DANCE 3 " ICON_FA_MUSIC))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DANCE3;
-				if (pMenu->AddStaticButton(ICON_FA_MUSIC " DANCE 4 " ICON_FA_MUSIC))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DANCE4;
-				if (pMenu->AddStaticButton(ICON_FA_HANDS " HANDSUP " ICON_FA_HANDS))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_HANDSUP;
-				if (pMenu->AddStaticButton(ICON_FA_PHONE " PHONE CALL " ICON_FA_PHONE))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_USECELLPHONE;
-				if (pMenu->AddStaticButton(ICON_FA_PHONE " STOP PHONE CALL " ICON_FA_PHONE))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_STOPUSECELLPHONE;
-				if (pMenu->AddStaticButton(ICON_FA_BEER " DRINK BEER " ICON_FA_BEER))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DRINK_BEER;
-				if (pMenu->AddStaticButton(ICON_FA_SKULL_CROSSBONES " SMOKE CIGGY " ICON_FA_SKULL_CROSSBONES))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_SMOKE_CIGGY;
-				if (pMenu->AddStaticButton(ICON_FA_HANDS " DRINK WINE " ICON_FA_HANDS))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DRINK_WINE;
-				if (pMenu->AddStaticButton(ICON_FA_HANDS " DRINK SPRUNK " ICON_FA_HANDS))
-					set.special_action_anim = ID_MENU_SPECIAL_ACTION_DRINK_SPRUNK;
 
 				break;
 			}
@@ -1471,13 +1476,118 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				break;
 			}
 
+			case MENU_BOTS_CONNECTED:
+			{
+				std::vector<int> connectedBotIDs;  // Vector to store the IDs of connected bots
+
+				for (int i = g_BotFuncs->BotSettings.ClientCount; i > 1; i--)
+				{
+					if (g_BotFuncs->BotClient[i].bConnected)
+					{
+						connectedBotIDs.push_back(i);  // Store the bot's ID (i) if it's connected
+
+						ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.000f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
+						if (ImGui::Button(pSampMulti->SetText("%s | ID: %d", getPlayerName(g_BotFuncs->BotClient[i].playerID), i)))
+						{
+
+						}
+						ImGui::PopStyleColor(1);
+					}
+				}
+
+				break;
+			}
+
+			case MENU_BOT_FIND_VEHICLES:
+			{
+				for (int cars = 0; cars < SAMP_MAX_VEHICLES; cars++)
+				{
+					if (g_Vehicles->iIsListed[cars] != 1)
+						continue;
+					if (g_Vehicles->pSAMP_Vehicle[cars] == NULL)
+						continue;
+					if (g_Vehicles->pSAMP_Vehicle[cars]->pGTA_Vehicle == NULL)
+						continue;
+
+					struct vehicle_info* vinfo = getGTAVehicleFromSAMPVehicleID(cars);
+
+					if (!vinfo)
+						continue;
+
+					if (cars == g_Players->pLocalPlayer->sCurrentVehicleID)
+						continue;
+
+					ImGui::PushID(cars);
+					ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.577f, 0.447f, 0.637f, 0.310f));
+					ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.577f, 0.447f, 0.637f, 0.310f));
+					ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.493f, 0.652f, 0.536f, 0.607f));
+					if (ImGui::CollapsingHeader(pSampMulti->SetText("%s(M: %d) (sampID: %d)", pSampMulti->getVehicleNameBySAMPID(cars), pSampMulti->getVehicleModelBySAMPID(cars), cars)))
+					{
+						ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+						ImGui::PushStyleColor(ImGuiCol_Border, ImColorNone);
+						ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.000f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
+						if (ImGui::Button(pSampMulti->SetText("%s(: %d) (ID: %d)", pSampMulti->getVehicleNameBySAMPID(cars), pSampMulti->getVehicleModelBySAMPID(cars), cars), pMenu->MenuItemMatchMenuWidth()))
+						{
+							if (g_BotFuncs->BotSettings.iVehicleID != cars)
+							{
+								g_BotFuncs->BotSettings.iVehicleID = cars;
+								addMessageToChatWindow("Bot vehicle changed to %d", g_BotFuncs->BotSettings.iVehicleID);
+							}
+							else addMessageToChatWindow("This vehicle was already selected!");
+						}
+						ImGui::PopStyleColor(4);
+						ImGui::PopStyleVar(1);
+						pMenu->AddItemDescription("Select target vehicle");
+
+					}
+					ImGui::PopID();
+					ImGui::PopStyleColor(3);
+					pMenu->AddItemDescription(pSampMulti->SetText("Vehicle ID: %d\nName: %s", cars, pSampMulti->getVehicleNameBySAMPID(cars)));
+				}
+				break;
+			}
 
 			case MENU_PLAYER_BOTS:
 			{
+
+				pMenu->AddMenuText(pSampMulti->SetText("Connected Bots: %d", g_BotFuncs->BotSettings.ClientCount));
+				std::vector<int> connectedBotIDs;  // Vector to store the IDs of connected bots
+
+				for (int i = 0; i < g_BotFuncs->BotSettings.ClientCount; i++)
+				{
+					if (g_BotFuncs->BotClient[i].bConnected)
+					{
+						connectedBotIDs.push_back(i);  // Store the bot's ID (i) if it's connected
+
+						ImGui::PushID(i);
+						ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
+						if (ImGui::CollapsingHeader(pSampMulti->SetText(g_BotFuncs->BotClient[i].NickName)))
+						{
+							// Create sliders in ImGui
+							if(ImGui::SliderFloat("##Position X Offset", &posXOffset, -10.0f, 10.0f))
+								g_BotFuncs->BotClient[i].fLastOnFootPos[0] += posXOffset;// Adjust range as needed
+							if(ImGui::SliderFloat("##Position Y Offset", &posYOffset, -10.0f, 10.0f))  
+								g_BotFuncs->BotClient[i].fLastOnFootPos[1] += posYOffset;
+							if(ImGui::SliderFloat("##Position Z Offset", &posZOffset, -10.0f, 10.0f))
+								g_BotFuncs->BotClient[i].fLastOnFootPos[2] += posZOffset;
+							
+						}
+						ImGui::PopStyleColor(3);
+						ImGui::PopID();
+					}
+				}
+
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
 				pMenu->AddMenu("Bot Trolls", MENU_PLAYER_BOT_TROLLS);
+				pMenu->AddMenu("Vehicles for BOTS", MENU_BOT_FIND_VEHICLES);
 				pMenu->AddMenuText(pSampMulti->SetText("Bot %s Functions:", M0D_VERSION));
 				ImGui::PopStyleColor(3);
 
@@ -1510,8 +1620,13 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
 				if (ImGui::Button("Delete All Bots##BotFunc3", pMenu->MenuItemMatchMenuWidth()))
 				{
-					for (int i = g_BotFuncs->BotSettings.ClientCount; i > 0; i--)
-						g_BotFuncs->Delete_Bot();
+					for (int i = g_BotFuncs->BotSettings.ClientCount; i > 1; i--)
+					{
+						if (g_BotFuncs->BotClient[i].bConnected)
+						{
+							g_BotFuncs->Delete_Bot();
+						}
+					}
 				}
 				ImGui::PopStyleColor(4);
 				
@@ -1533,9 +1648,13 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
 				if (ImGui::Button(pSampMulti->SetText("Bot Class Set: %d", g_BotFuncs->BotSettings.ClassID), pMenu->MenuItemMatchMenuWidth(70.0f)))
 				{
-					for (int j = 0; j < 2; j++)
-						for (int i = g_BotFuncs->BotSettings.ClientCount - 1; i >= 0; i--)
+					for (int i = g_BotFuncs->BotSettings.ClientCount; i > 1; i--)
+					{
+						if (g_BotFuncs->BotClient[i].bConnected)
+						{
 							g_BotFuncs->Spawn_Bot(i);
+						}
+					}
 				}
 				pMenu->AddItemDescription("click to spawn\nfrom this class");
 				pMenu->AddIncDecButtons(g_BotFuncs->BotSettings.ClassID, 1, 299, 0, true, "IncClassIDBot", "DecClassIDBot");
@@ -1544,7 +1663,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 					g_BotFuncs->BotSettings.ClassID = pSampMulti->getPlayerSkin(g_Players->sLocalPlayerID);
 				}
 				ImGui::PopStyleColor(4);
-				pMenu->AddItemDescription("set bot skin id like yours");
+				pMenu->AddItemDescription("set bot skin id like yours\nthen click on 'Bot Class Set' to spawn...");
 
 				pMenu->AddMenuText("Bot Position");
 				pMenu->AddSlider("##BotsFollowDistanceSet", g_BotFuncs->BotSettings.fDistanceFollow, -15.0f, 15.0f);
@@ -1953,6 +2072,62 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				break;
 			}
 
+			case MENU_PLAYER_STICKMOD:
+			{
+				struct vehicle_info* info = vehicle_info_get(VEHICLE_SELF, 0);
+
+				for (int players = 0; players < SAMP_MAX_PLAYERS; players++)
+				{
+					if (g_Players->iIsListed[players] != 1)
+						continue;
+
+					// Aktivni stil
+					if (BlackLightFuncs->bStickTroll[players] == true)
+					{
+						ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+						ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.8f, 0.1f, 1.0f));
+						ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.6f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.9f, 0.2f, 0.5f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+					}
+					else
+					{
+						ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+						ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+						ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.9f, 0.2f, 0.5f));
+						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+					}
+
+					ImGui::PushID(players);
+
+					static int lastStick = -1;
+
+					if (ImGui::Button(
+						pSampMulti->SetText("%s (%d)", getPlayerName(players), players),
+						pMenu->MenuItemMatchMenuWidth()))
+					{
+						// turn off previous
+						if (lastStick != -1)
+							BlackLightFuncs->bStickTroll[lastStick] = false;
+
+						// activate new
+						BlackLightFuncs->bStickTroll[players] = true;
+						lastStick = players;
+
+						set.BlackLight.Target.PlayerStick = players;
+					}
+
+
+					ImGui::PopID();
+					ImGui::PopStyleColor(4);
+					ImGui::PopStyleVar(1);
+				}
+				break;
+			}
+
+
+
 			case MENU_PLAYER_COPYCHAT:
 			{
 				for (int players = 0; players < SAMP_MAX_PLAYERS; players++)
@@ -2010,7 +2185,6 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 			{
 				if (pSampMulti->GetPlayersInStream() > 0)
 				{
-					int shitid = 0;
 					for (int players = 0; players < SAMP_MAX_PLAYERS; players++)
 					{
 						if (g_Players->iIsListed[players] != 1)
@@ -2148,21 +2322,289 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				break;
 			}
 
-			case MENU_VEHICLE:
+			case MENU_VEHICLE_GOC:
 			{
-				pMenu->AddMenuText("Vehicle");
+				ImVec4 activeColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green color
+
+				ImGui::PushStyleColor(ImGuiCol_Text, ImColorRed);
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
+				if (ImGui::Button("~ OFF GoC Shooters ~", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->main = stGoC::main_funcs::GOC_MAIN_NONE;
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_NONE;
+
+					::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: None");
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "GoC Faker: OFF");
+					addMessageToChatWindow("God Of Cars shooters: OFF");
+				} 
+				ImGui::PopStyleColor(4);
+
+				ImGui::Separator();
 
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
-				pMenu->AddMenu("Route Recording", MENU_VEH_ROUTE_RECORDING);
-				pMenu->AddMenu("Custom Handling", MENU_VEH_HANDLING);
-				pMenu->AddMenu("Teleport Vehicles", MENU_VEH_WARP_VEHICLES);
-				pMenu->AddMenu("Vehicle Tuning", MENU_VEH_VEHICLE_TUNING);
+
+				ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, GoC->main == stGoC::main_funcs::GOC_MAIN_SUPERGUN ? 1.0f : 0.0f);
+				ImGui::PushStyleColor(ImGuiCol_Border, GoC->main == stGoC::main_funcs::GOC_MAIN_SUPERGUN ? goc_MainFuncs_border : ImColorNone);
+				if (ImGui::Button("Super Gun", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->main = stGoC::main_funcs::GOC_MAIN_SUPERGUN;
+					::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: SuperGun");
+				}
+				ImGui::PopStyleColor(1);
+				ImGui::PopStyleVar(1);
+
+				ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, GoC->main == stGoC::main_funcs::GOC_MAIN_LUGGER_SUN ? 1.0f : 0.0f);
+				ImGui::PushStyleColor(ImGuiCol_Border, GoC->main == stGoC::main_funcs::GOC_MAIN_LUGGER_SUN ? goc_MainFuncs_border : ImColorNone);
+				if (ImGui::Button("Lugger Sun", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->main = stGoC::main_funcs::GOC_MAIN_LUGGER_SUN;
+					::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: LuggerSun");
+				}
+				ImGui::PopStyleColor(1);
+				ImGui::PopStyleVar(1);
+
+				// Tornado Magnet Button
+				ImGui::PushStyleColor(ImGuiCol_Border, GoC->main == stGoC::main_funcs::GOC_MAIN_TORNADO_MAGNET ? goc_MainFuncs_border : ImColorNone);
+				if (ImGui::Button("Tornado Magnet", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->main = stGoC::main_funcs::GOC_MAIN_TORNADO_MAGNET;
+					::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: Tornado");
+				}
+				ImGui::PopStyleColor(1);
+
+				// Spawner Chaos Button
+				ImGui::PushStyleColor(ImGuiCol_Border, GoC->main == stGoC::main_funcs::GOC_MAIN_SPANWER_CHAOS ? goc_MainFuncs_border : ImColorNone);
+				if (ImGui::Button("Spawner Chaos", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->main = stGoC::main_funcs::GOC_MAIN_SPANWER_CHAOS;
+					::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: ChaosS");
+				}
+				ImGui::PopStyleColor(1);
+
+				// Snake Ungravity Button
+				ImGui::PushStyleColor(ImGuiCol_Border, GoC->main == stGoC::main_funcs::GOC_MAIN_SNAKE_UNVRAVITY ? goc_MainFuncs_border : ImColorNone);
+				if (ImGui::Button("Snake Ungravity", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->main = stGoC::main_funcs::GOC_MAIN_SNAKE_UNVRAVITY;
+					::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: SnakeDegravity");
+				}
+				ImGui::PopStyleColor(1);
+
+				// Grabber Button
+				ImGui::PushStyleColor(ImGuiCol_Border, GoC->main == stGoC::main_funcs::GOC_MAIN_GRABBER ? goc_MainFuncs_border : ImColorNone);
+				if (ImGui::Button("Grabber", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->main = stGoC::main_funcs::GOC_MAIN_GRABBER;
+					::sprintf_s(szMainFunc, sizeof(szMainFunc), "GoC: Grabber");
+				}
+				ImGui::PopStyleColor(1); //borders
+
+
+				pMenu->AddMenuText("GoC - Target");
+
+				pMenu->AddButton(&BlackLightFuncs->bGoCfaker, "Use Custom TargetID");
+				pMenu->AddItemDescription("For additional functions\nUse /.gocc <player id\nFunctions below are all on [R] key");
+
+				pMenu->AddMenuText("GoC - Additional");
+
+				if (ImGui::Button("Skin Attacker (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_SKIN_ATTACKER;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Skin Attacker");
+				}
+
+				if (ImGui::Button("KickUP (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_KICKUP;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: KickUp");
+				}
+
+				if (ImGui::Button("Slapper (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_SLEP;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Slapper");
+				}
+
+				if (ImGui::Button("Destructor (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_DESTRUCTOR;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Destructor");
+				}
+
+				if (ImGui::Button("Loading (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_LOADING;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Loading");
+				}
+				pMenu->AddItemDescription("For R1 Clients");
+
+				if (ImGui::Button("Stick (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_STICK;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Sticker");
+				}
+
+				if (ImGui::Button("Kill (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_KILL;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Kill Attacher");
+				}
+
+				if (ImGui::Button("Random teleport (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_REMOVE_KEBAB;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Random Tele");
+				}
+
+				if (ImGui::Button("Teleport UP (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_TELE_UP;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Teleport Up");
+				}
+
+				if (ImGui::Button("Map Teleport (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_MAP_TELE;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Map Teleporter");
+				}
+
+				if (ImGui::Button("Super Slap (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_SLAP;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: SuperSlap");
+				}
+
+				if (ImGui::Button("Magnet Tele (R)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_MAGNIT;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Magnet Tele");
+				}
+
+				if (ImGui::Button("Vehicle Deformer [R]", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_CARDEFORMER;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Vehicle Deformer");
+				}
+
+				if (ImGui::Button("Skin Shutdown [R] (RP)", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FACKER_PIZDARVANKA;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Skin Shutdown");
+				}
+
+				if (ImGui::Button("Vehicle Remote Controll [R]", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_CONTROL;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Remote Controll");
+				}
+				pMenu->AddItemDescription("You must be in vehicle AND target must be in vehicle!");
+
+				if (ImGui::Button("UpShooter [R]", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_UP_SHOOTER;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: UpShooter");
+				}
+
+				if (ImGui::Button("Fake Carshooter [R]", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					GoC->faker = stGoC::faker_funcs::GOC_FAKER_CAR_SHOOTER;
+					::sprintf_s(szFakerFunc, sizeof(szFakerFunc), "Faker: Cars Shooter");
+				}
+
+				pMenu->AddMenuText("GoC - Settings");
+
+				pMenu->AddButton(&GoC->set.ignore_afk.enabled, "Ignore AFK players");
+
+				pMenu->AddButton(&GoC->set.ignore_locked.enabled, "Ignore Locked vehicles");
+				pMenu->AddButton(&GoC->set.ignore_driver.enabled, "Ignore vehicles driver");
+				pMenu->AddButton(&GoC->set.ignore_my_passagers.enabled, "Ignore Passangers in my vehicle");
+				pMenu->AddButton(&GoC->set.ignore_attach.enabled, "Ignore attached");
+				pMenu->AddItemDescription("This is used to handle a situation where the player is not supposed to be attached\nsuch as being on foot or standing on top of the vehicle without being in it.");
+
+				pMenu->AddButton(&GoC->set.incar_only.enabled, "In vehicle ONLY");
+				pMenu->AddItemDescription("If target is in vehicle!");
+
+				pMenu->AddButton(&GoC->set.onfoot_only.enabled, "On Foot ONLY");
+				pMenu->AddItemDescription("If target is on foot not in vehicle!");
+
+				pMenu->AddMenuText("GoC - Sync");
+
+				ImGui::PushStyleColor(ImGuiCol_Text, ImColorBanana);
+				// SYNC_TYPE_INCAR Button
+				if (ImGui::Button("SYNC_TYPE_INCAR", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_INCAR;
+					::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_INCAR");
+					//addMessageToChatWindow("sync %d", syncronisations_settings->sync);
+				}
+
+				// SYNC_TYPE_UNOCCUPIED Button
+				if (ImGui::Button("SYNC_TYPE_FORCED", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_UNOCCUPIED;
+					::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_FORCED");
+					//addMessageToChatWindow("sync %d", syncronisations_settings->sync);
+				}
+
+				// SYNC_TYPE_DEFAULT Button
+				if (ImGui::Button("SYNC_TYPE_EXISTED", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_DEFAULT;
+					::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_EXISTED");
+					//addMessageToChatWindow("sync %d", syncronisations_settings->sync);
+				}
+
+				if (ImGui::Button("SYNC_TYPE_CURRENT", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_TRAILER;
+					::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_CURRENT");
+					//addMessageToChatWindow("sync %d", syncronisations_settings->sync);
+				}
+
+				if (ImGui::Button("SYNC_TYPE_ECTOPIC", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_ECTOPIC;
+					::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_ECTOPIC");
+					//addMessageToChatWindow("sync %d", syncronisations_settings->sync);
+				}
+
+				if (ImGui::Button("SYNC_TYPE_ON_TIMEOUTS", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_TIMEOUT_SYNC;
+					::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_ON_TIMEOUTS");
+					//addMessageToChatWindow("sync %d", syncronisations_settings->sync);
+				}
+
+				if (ImGui::Button("SYNC_TYPE_PASSANGER", { pMenu->MenuItemMatchMenuWidth().x, 25.0f }))
+				{
+					syncronisations_settings->sync = stSync::sync_type::SYNC_TYPE_PASSANGER;
+					::sprintf_s(szSync, sizeof(szSync), "SYNC_TYPE_PASSENGER");
+					//addMessageToChatWindow("sync %d", syncronisations_settings->sync);
+				}
+				ImGui::PopStyleColor(1);//TEXT
+
 				ImGui::PopStyleColor(3);
 
-				pMenu->AddMenuText("Other functions");
+				break;
+			}
+
+			case MENU_VEHICLE:
+			{
 				ImGui::PushFont(pFontArialV2);
+				
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
+				pMenu->AddMenu("God Of Cars", MENU_VEHICLE_GOC);
+				ImGui::PopStyleColor(3);
+				pMenu->AddItemDescription("God Of Cars system from Blue Eclipse\nby MasterZero & Krakazabra");
+
+				pMenu->AddButton(&BlackLightFuncs->bCarRammer, "Rammer [LMB]##VehicleFunc0");
+				pMenu->AddButton(&BlackLightFuncs->bVehicleWheelAim, "Vehicle Wheels Aim##VehicleFunc0a");
 				pMenu->AddButton(&BlackLightFuncs->bMouseDrive, "Mouse Drive##VehicleFunc1");
 				pMenu->AddButton(&BlackLightFuncs->bVehicleQuickWarp, "Quick Warp##VehicleFunc1a");
 				pMenu->AddItemDescription("press and hold [LShift] then press [R] to warp");
@@ -2234,10 +2676,12 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				pMenu->AddButton(&BlackLightFuncs->bBlinkColors, "Blink Colors##VehicleFunc17b");
 				pMenu->AddButton(&BlackLightFuncs->bVehicleFakeFire, "Fake Fire##VehicleFunc17c");
 				pMenu->AddItemDescription("others see");
-				pMenu->AddButton(&BlackLightFuncs->bCarHardFlip, "Car Hard Flip##VehicleFunc17d");
-				pMenu->AddItemDescription("Press RMB to flip");
+				pMenu->AddButton(&BlackLightFuncs->bCarHardFlip, "Revert on Wheels##VehicleFunc17d");
+				pMenu->AddItemDescription("If your vehicle is on roof click right mouse\nto get it back on wheels");
 
 				pMenu->AddMenuText("God Of Cars:", false, ImColorGreen);
+				pMenu->AddButton(&BlackLightFuncs->bPickVehiclesMass, "Pick ALL Vehicles##VehicleFunc18c");
+
 				pMenu->AddButton(&BlackLightFuncs->bPickVehicle, "Pick Vehicles##VehicleFunc18");
 				pMenu->AddItemDescription("Aim at vehicle then press and hold right mouse button");
 				pMenu->AddButton(&BlackLightFuncs->bComponentFlood, "Flood Car Parts##VehicleFunc19");
@@ -2255,71 +2699,34 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				break;
 			}
 
-			case MENU_VEH_HANDLING:
-			{
-				break;
-			}
-
-			case MENU_VEH_ROUTE_RECORDING: 
-			{
-				pMenu->AddMenuText("Route Recording");
-				pMenu->AddButton(&BlackLightFuncs->bVehicleRecordingEnable, "Enable Recording");
-				pMenu->AddMenuText("Routes History");
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
-				pMenu->AddMenu("Saved Recordings", MENU_VEHROUTE_SAVED_RECORDINGS);
-				ImGui::PopStyleColor(3);
-				pMenu->AddMenuText("Recording Settings");
-
-				break;
-			}
-
-			case MENU_VEHROUTE_SAVED_RECORDINGS:
-			{
-
-				break;
-			}
-
-			case MENU_VEH_VEHICLE_TUNING:
-			{
-				break;
-			}
-
-			case MENU_VEH_WARP_VEHICLES:
-			{
-				break;
-			}
-
 			case MENU_TELEPORTS:
 			{
-				pMenu->AddMenuText("Interiors " ICON_FA_HOME);
+				pMenu->AddMenuText("Interiors");
+				ImGui::PushFont(pFontArialV2);
 				for (int i = 0; i < 146; i++) //interiors
 				{
 					ImGui::PushID(i);
-					if (pMenu->AddStaticButton(pSampMulti->SetText(interiors_list[i].interior_name), 40.0f))
+					if (pMenu->AddStaticButton(pSampMulti->SetText("%s", interiors_list[i].interior_name)))
 					{
-						if (g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->state != ACTOR_STATE_DEAD)
+						if (BlackLightFuncs->bAirbreakPlayer)
+							addMessageToChatWindow("Player Airbreak is activated = cannot teleport");
+						else
 						{
-							cheat_teleport(interiors_list[i].pos, interiors_list[i].interior_id);
-							addMessageToChatWindow("Teleported to interior: %s(ID: %d)", interiors_list[i].interior_name, interiors_list[i].interior_id);
+							if (g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->state != ACTOR_STATE_DEAD)
+							{
+								cheat_teleport(interiors_list[i].pos, interiors_list[i].interior_id);
+								//addMessageToChatWindow("Teleported to interior:\n%s(ID: %d)", interiors_list[i].interior_name, interiors_list[i].interior_id);
+							}
+							else addMessageToChatWindow("Can't teleport because you're dead.");
 						}
-						else addMessageToChatWindow("Can't teleport because you're dead.");
 					}
 					if (ImGui::IsItemHovered())
 					{
 						ImGui::BeginTooltip();
-						ImGui::Text("Click to teleport.\nRMB to copy teleport position.");
 						ImGui::Text("Pos: |X %0.2f |Y %0.2f |Z %0.2f", interiors_list[i].pos[0], interiors_list[i].pos[1], interiors_list[i].pos[2]);
+						ImGui::Text("%s, ID: %d", interiors_list[i].interior_name, interiors_list[i].interior_id);
 						ImGui::EndTooltip();
 					}
-					ImGui::SameLine();
-					if (pMenu->AddStaticButton(ICON_FA_COPY, 10.0f))
-					{
-						ImGui::SetClipboardText(pSampMulti->SetText("%0.2f, %0.2f, %0.2f", interiors_list[i].pos[0], interiors_list[i].pos[1], interiors_list[i].pos[2]));
-						cheat_state_text(ImGui::GetClipboardText());
-					}
-					pMenu->AddItemDescription("Click to copy position.");
 					ImGui::PopID();
 					/*ImGui::SameLine();
 
@@ -2333,7 +2740,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 					}*/
 				}
 				ImGui::Separator();
-				pMenu->AddMenuText("Static Teleports " ICON_FA_PLANE);
+				pMenu->AddMenuText("Static Teleports");
 				ImGui::Separator();
 				for (int i = 0; i < STATIC_TELEPORT_MAX; i++)
 				{
@@ -2344,30 +2751,16 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 						continue;
 
 					ImGui::PushID(i);
-					if (pMenu->AddStaticButton(pSampMulti->SetText("%s", set.static_teleport_name[i]), 40.0f))
+					if (pMenu->AddStaticButton("Teleport##tpOther2"))
 					{
 						if (g_Players->pLocalPlayer->pSAMP_Actor->pGTA_Ped->state != ACTOR_STATE_DEAD) {
 							cheat_teleport(set.static_teleport[i].pos, set.static_teleport[i].interior_id);
-							addMessageToChatWindow("Teleported to: %s(ID: %d)", set.static_teleport_name[i], set.static_teleport[i].interior_id);
+							addMessageToChatWindow("Teleported to:\n%s(ID: %d)", set.static_teleport_name[i], set.static_teleport[i].interior_id);
 						}
 						else addMessageToChatWindow("Can't teleport because you're dead.");
 					}
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text("Click to teleport.");
-						ImGui::Text("Pos: |X %0.2f |Y %0.2f |Z %0.2f", set.static_teleport[i].pos[0], set.static_teleport[i].pos[1], set.static_teleport[i].pos[2]);
-						ImGui::EndTooltip();
-					}
-					ImGui::SameLine();		
-					if (pMenu->AddStaticButton(ICON_FA_COPY, 10.0f))
-					{
-						ImGui::SetClipboardText(pSampMulti->SetText("%0.2f, %0.2f, %0.2f", set.static_teleport[i].pos[0], set.static_teleport[i].pos[1], set.static_teleport[i].pos[2]));
-						cheat_state_text(ImGui::GetClipboardText());
-					}
-					pMenu->AddItemDescription("Click to copy position.");
 					ImGui::PopID();
-					/*ImGui::SameLine();
+					ImGui::SameLine();
 
 					ImGui::Text("%s", set.static_teleport_name[i]);
 					if (ImGui::IsItemHovered())
@@ -2376,8 +2769,9 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 						ImGui::Text("Pos: |X %0.2f |Y %0.2f |Z %0.2f", set.static_teleport[i].pos[0], set.static_teleport[i].pos[1], set.static_teleport[i].pos[2]);
 						ImGui::Text("%s, ID: %d", set.static_teleport_name[i], set.static_teleport[i].interior_id);
 						ImGui::EndTooltip();
-					}*/
+					}
 				}
+				ImGui::PopFont();
 				break;
 			}
 
@@ -2394,6 +2788,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 			case MENU_SETTINGS:
 			{
 				ImGui::PushFont(pFontArialV2);
+				pMenu->AddMenuText("Mod Hud");
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
@@ -2409,12 +2804,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 				}
 				if (pMenu->AddStaticButton("Copy Server Address##BtnCopyAddrSrv1"))
 				{
-					if (!pSampMulti->IsTextIdentical(ImGui::GetClipboardText(), pSampMulti->getServerIp()))
-					{
-						ImGui::SetClipboardText(pSampMulti->getServerIp());
-						addMessageToChatWindow("Server address has been copied to clipboard");
-					}
-					else addMessageToChatWindow("Clipboard already contains this text.");
+					ImGui::SetClipboardText(pSampMulti->SetText("%s:%d", g_SAMP->szIP, g_SAMP->ulPort));
 				}
 				pMenu->AddMenuText("MP3 Settings");
 				pMenu->AddButton(&__MP3.bMP3LoopSong, "Loop Song##SettingsFunc0");
@@ -2494,6 +2884,8 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 			{
 				pMenu->AddMenuText("Mod Hud Options");
 				pMenu->AddButton(&BlackLightFuncs->Menu.bImGuiHudMenu, "Hud Enable##ShowModHud1");
+				pMenu->AddButton(&BlackLightFuncs->bSpeedmeterBackground, "Speedmeter Background##spdMeter1");
+
 				break;
 			}
 
@@ -2642,7 +3034,7 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 			
 			case MENU_INFO_GAME:
 			{
-				pMenu->AddMenuText(pSampMulti->SetText("FPS: %.0f", pGame->GetFPS()), false, ImColorBanana);
+				pMenu->AddMenuText(pSampMulti->SetText("FPS: %.0f", getFPS()), false, ImColorBanana);
 				break;
 			}
 
@@ -2776,12 +3168,12 @@ void CBlackLightMenu::ImBlackLightMenu(void)
 		{
 			if (pMenu->GetLastMenu() != pMenu->GetCurrentMenu())
 			{
-				if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Backspace)) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+				if (ImGui::IsKeyPressed(ImGuiKey_Backspace) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 				{
 					pMenu->SetMenu(pMenu->GetLastMenu(), false);
-				}
+				}  
 			}
-			else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Backspace)) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)
+			else if (ImGui::IsKeyPressed(ImGuiKey_Backspace) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)
 				&& menus == MENU_MAIN) BlackLightFuncs->Menu.bMain_Menu = false;
 		}
 	}
@@ -2803,315 +3195,320 @@ void CBlackLightMenu::ImBlackLightHud(bool bEnable)
 		ImGui::PushStyleColor(ImGuiCol_Border, ImColorNone);
 		ImGui::SetNextWindowSize(ImVec2((float)pPresentParam.BackBufferWidth, 59.0f));
 		ImGui::SetNextWindowPos(ImVec2(0.0f, (float)pPresentParam.BackBufferHeight - 59.0f));
-		if (ImGui::Begin("##ImBlackLightHud", &bEnable, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
+		ImGui::Begin("##ImBlackLightHud", &bEnable, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
+		ImGui::PopStyleColor(2);
+		ImGui::PopStyleVar(3);
+
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.0f, 0.0f));
+
+		ImGui::Text("");
+		ImGui::SameLine(ImGui::GetWindowSize().x - ((ImGui::GetWindowSize().x / 2) - 200.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImColorNone);
+		if (ImGui::BeginChild("##InnerChild0", ImVec2((ImGui::GetWindowSize().x / 2) - 200.0f, 23.0f), false, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar))
+		{
+			ImGui::PopStyleColor(1);
+			ImGui::PopStyleVar(1);
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.0f, 0.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 4.0f));
+
+			if (BlackLightFuncs->bShowKillCounterInsideHud)
+			{
+				static bool badd = false;
+				static int kill_counter_recover = 0;
+				ImGui::Text("");
+				ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize("Kills: 100").x + ImGui::CalcTextSize("Friends 999").x + ImGui::CalcTextSize(" Admins 999").x + ImGui::CalcTextSize(" Settings ").x + ImGui::CalcTextSize(" Logger ").x + 90.0f));
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
+				if (ImGui::Button(pSampMulti->SetText("Kills: %d##KilLCounterButton", set.BlackLight.kill_counter)))
+				{
+					if (!pSampMulti->IsMenuActive())
+					{
+						addMessageToChatWindow("%s Menu must be active", M0D_NAME);
+					}
+					else
+					{
+
+						if (!badd)
+						{
+							if (set.BlackLight.kill_counter != 0)
+							{
+								kill_counter_recover = set.BlackLight.kill_counter;
+								set.BlackLight.kill_counter = 0;
+								addMessageToChatWindow("Kill counter reseted, click again to restore to previous value.");
+								badd = true;
+							}
+							else addMessageToChatWindow("Kill counter cannot be reseted because it's already on 0");
+						}
+						else if (badd)
+						{
+							set.BlackLight.kill_counter = kill_counter_recover;
+							addMessageToChatWindow("Kill counter value has been restored to previous value.");
+							badd = false;
+						}
+					}
+				}
+				ImGui::PopStyleColor(3);
+				pMenu->AddItemDescription(pSampMulti->IsMenuActive() ? "Click to reset counter.\nClick again to restore to previous value." : "Blacklight Menu must be active!");
+				ImGui::SameLine();
+			}
+			else
+			{
+				ImGui::Text("");
+				ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize("Friends 999").x + ImGui::CalcTextSize(" Admins 999").x + ImGui::CalcTextSize(" Settings ").x + ImGui::CalcTextSize(" Logger ").x + 90.0f));
+			}
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.183f, 0.326f, 0.781f, 0.647f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
+			if (ImGui::Button(pSampMulti->SetText(ICON_FA_USER_FRIENDS " Friends %d##BtnFriends1", pSampMulti->GetFriendsInStream())))
+			{
+				if (!BlackLightFuncs->Menu.bImFriendAndAdminsMenu)
+				{
+					if (set.BlackLight.menu_admins_and_friends != MOD_FRIENDS_MENU)
+						set.BlackLight.menu_admins_and_friends = MOD_FRIENDS_MENU;
+					BlackLightFuncs->Menu.bImFriendAndAdminsMenu = true;
+				}
+				else
+				{
+					if (set.BlackLight.menu_admins_and_friends != MOD_FRIENDS_MENU)
+						set.BlackLight.menu_admins_and_friends = MOD_FRIENDS_MENU;
+				}
+			}
+			pMenu->AddItemDescription(pSampMulti->SetText(BlackLightFuncs->bViewAllFriends ? "Streamed: %d\nAll Friends: %d" : "Streamed: %d\nOnline Friends: %d", pSampMulti->GetFriendsInStream(), pSampMulti->GetFriendsCount()));
+
+			ImGui::SameLine();
+			if (ImGui::Button(pSampMulti->SetText(ICON_FA_USER_SHIELD " Admins %d##BtnAdmins1", pSampMulti->GetAdminsInStream())))
+			{
+				if (!BlackLightFuncs->Menu.bImFriendAndAdminsMenu)
+				{
+					if (set.BlackLight.menu_admins_and_friends != MOD_ADMINS_MENU)
+						set.BlackLight.menu_admins_and_friends = MOD_ADMINS_MENU;
+					BlackLightFuncs->Menu.bImFriendAndAdminsMenu = true;
+				}
+				else
+				{
+					if (set.BlackLight.menu_admins_and_friends != MOD_ADMINS_MENU)
+						set.BlackLight.menu_admins_and_friends = MOD_ADMINS_MENU;
+				}
+			}
+			pMenu->AddItemDescription(pSampMulti->SetText(BlackLightFuncs->bViewAllAdmins ? "Streamed: %d\nAll Admins: %d" : "Streamed: %d\nOnline: %d", pSampMulti->GetAdminsInStream(), pSampMulti->GetAdminsCount()));
+			ImGui::SameLine();
+
+			if (ImGui::Button(ICON_FA_INFO " Logger##BtnPlayerJoiner1"))
+			{
+				if (!BlackLightFuncs->bPlayerJoiner)
+				{
+					if (set.BlackLight.menu_admins_and_friends != MOD_JOINER_LOGGER)
+						set.BlackLight.menu_admins_and_friends = MOD_JOINER_LOGGER;
+					BlackLightFuncs->bPlayerJoiner = true;
+				}
+				else
+				{
+					if (set.BlackLight.menu_admins_and_friends != MOD_JOINER_LOGGER)
+						set.BlackLight.menu_admins_and_friends = MOD_JOINER_LOGGER;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button(ICON_FA_WRENCH " Settings##BtnSettings1"))
+			{
+				if (!BlackLightFuncs->Menu.bImFriendAndAdminsMenu)
+				{
+					if (set.BlackLight.menu_admins_and_friends != FRIENDS_ADMINS_SETTINGS_MENU)
+						set.BlackLight.menu_admins_and_friends = FRIENDS_ADMINS_SETTINGS_MENU;
+					BlackLightFuncs->Menu.bImFriendAndAdminsMenu = true;
+				}
+				else
+				{
+					if (set.BlackLight.menu_admins_and_friends != FRIENDS_ADMINS_SETTINGS_MENU)
+						set.BlackLight.menu_admins_and_friends = FRIENDS_ADMINS_SETTINGS_MENU;
+				}
+			}
+			ImGui::PopStyleColor(3);
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.000f, 0.000f, 0.000f, 0.697f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.677f, 0.000f, 0.000f, 0.831f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.000f, 0.000f, 0.000f, 0.697f));
+			if (ImGui::Button("X##CloseHud1"))
+			{
+				if (pSampMulti->IsMenuActive())
+				{
+					BlackLightFuncs->Menu.bImGuiHudMenu = false;
+					if (BlackLightFuncs->Menu.bImFriendAndAdminsMenu == true)
+						BlackLightFuncs->Menu.bImFriendAndAdminsMenu = false;
+				}
+			}
+            ImGui::PopStyleColor(3);
+
+			ImGui::PopStyleVar(2);
+			ImGui::EndChild();
+		}
+
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 6.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 0.0f));
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImColorTransparentBlack);
+		ImGui::PushStyleColor(ImGuiCol_Border, ImColorBanana);
+		if (ImGui::BeginChild("##innerChild1", ImVec2(ImGui::GetWindowSize().x - 1.0f, 30.0f), true, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar))
 		{
 			ImGui::PopStyleColor(2);
 			ImGui::PopStyleVar(3);
 
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.0f, 0.0f));
-
-			ImGui::Text("");
-			ImGui::SameLine(ImGui::GetWindowSize().x - ((ImGui::GetWindowSize().x / 2) - 200.0f));
-			ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImColorNone);
-			if (ImGui::BeginChild("##InnerChild0", ImVec2((ImGui::GetWindowSize().x / 2) - 200.0f, 23.0f), false, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar))
+			ImGui::PushFont(pFontArial);
+			ImGui::TextColored(ImColorGreen, "FPS: %.0f", getFPS());
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 0.0f));
+			switch (set.BlackLight.menu_hud_set)
 			{
-				ImGui::PopStyleColor(1);
-				ImGui::PopStyleVar(1);
+			case MOD_HUD_MENU_BASIC_INFO:
+			{
+				ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
 
-				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.0f, 0.0f));
-				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 4.0f));
+				ImGui::TextColored(ImColorBanana, "In Vehicle: %d", pSampMulti->GetPlayersInVehicleCount());
+				ImGui::SameLine();
+				ImGui::TextColored(ImColorBanana, "Players: %d", pSampMulti->getPlayersOnServerCount());
+				ImGui::SameLine();
+				ImGui::TextColored(ImColorBanana, "Players In Stream: %d", pSampMulti->GetPlayersInStream());
+				ImGui::SameLine();
+				ImGui::TextColored(ImColorBanana, "AFK Players: %d", pSampMulti->GetAFKPlayersCount());
+				pMenu->AddItemDescription("streamed");
+				ImGui::SameLine();
+				ImGui::TextColored(ImColorBanana, "Vehicles In Stream: %d", pSampMulti->GetVehiclesInStreamCount());
+				ImGui::SameLine();
+				pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
+				ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
+				break;
+			}
 
-				if (BlackLightFuncs->bShowKillCounterInsideHud)
+			case MOD_HUD_MENU_FUNCTIONS: //display hud functions
+			{
+				ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
+				ImGui::Text("");
+				pMenu->AddHudItem(&BlackLightFuncs->bPlayerGhost, "Ghost##HudItemGhost");
+				pMenu->AddHudItem(&BlackLightFuncs->bVehicleNoCollision, "Vehicle Collision##HudItemVehCol");
+				pMenu->AddHudItem(&BlackLightFuncs->bSmartInvis, "Invisible##HudItemInvis");
+				pMenu->AddHudItem(&BlackLightFuncs->bActorNoFall, "No Fall##HudItemNoFall");
+				pMenu->AddHudItem(&BlackLightFuncs->bFakeAfk, "Fake AFK##HudItemFakeAfk");
+				pMenu->AddHudItem(&BlackLightFuncs->bPizdarvankaPlayer, "Slapper##HudItemSlapper");
+				pMenu->AddHudItem(&BlackLightFuncs->bAirbreakPlayer, "Airbreak##HudItemAirbreak");
+				pMenu->AddHudItem(&BlackLightFuncs->bInvertWalk, "Invert Walk##HudItemInvWalk");
+				pMenu->AddHudItem(&BlackLightFuncs->bBulletTracers, "Bullet Tracers##HudItemBulletTracers");
+				pMenu->AddHudItem(&BlackLightFuncs->bNoSpread, "No Spread##HudItemNoSpread");
+				pMenu->AddHudItem(&BlackLightFuncs->bFastRotation, "Fast Rotation##HudItemFastRotation");
+				pMenu->AddHudItem(&BlackLightFuncs->bVehicleJump, "Vehicle Hop##HudItemVehicleHop");
+				pMenu->AddHudItem(&BlackLightFuncs->bVehicleBoost, "Vehicle Boost##HudItemVehicleBoost");
+
+				ImGui::SameLine();
+				pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
+				ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
+				break;
+			}
+
+			case MOD_HUD_MENU_MUSIC:
+			{
+				if (BASS_ChannelIsActive(mp3_channel))
 				{
-					static bool badd = false;
-					static int kill_counter_recover = 0;
-					ImGui::Text("");
-					ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize("Kills: 100").x + ImGui::CalcTextSize("Friends 999").x + ImGui::CalcTextSize(" Admins 999").x + ImGui::CalcTextSize(" Settings ").x + ImGui::CalcTextSize(" Logger ").x + 90.0f));
-					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
-					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
-					ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
-					if (ImGui::Button(pSampMulti->SetText("Kills: %d##KilLCounterButton", set.BlackLight.kill_counter)))
-					{
-						if (!pSampMulti->IsMenuActive())
-						{
-							addMessageToChatWindow("%s Menu must be active", M0D_NAME);
-						}
-						else
-						{
-
-							if (!badd)
-							{
-								if (set.BlackLight.kill_counter != 0)
-								{
-									kill_counter_recover = set.BlackLight.kill_counter;
-									set.BlackLight.kill_counter = 0;
-									addMessageToChatWindow("Kill counter reseted, click again to restore to previous value.");
-									badd = true;
-								}
-								else addMessageToChatWindow("Kill counter cannot be reseted because it's already on 0");
-							}
-							else if (badd)
-							{
-								set.BlackLight.kill_counter = kill_counter_recover;
-								addMessageToChatWindow("Kill counter value has been restored to previous value.");
-								badd = false;
-							}
-						}
-					}
-					ImGui::PopStyleColor(3);
-					pMenu->AddItemDescription(pSampMulti->IsMenuActive() ? "Click to reset counter.\nClick again to restore to previous value." : "Blacklight Menu must be active!");
+					ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
+					ImGui::Text(ICON_FA_MUSIC "  %s  ", __MP3.current_playing_song.c_str());
 					ImGui::SameLine();
+					ImGui::Text(ICON_FA_CLOCK "  Length: %s", mp3_duration);
+					ImGui::SameLine();
+					pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
+					ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
 				}
 				else
 				{
-					ImGui::Text("");
-					ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize("Friends 999").x + ImGui::CalcTextSize(" Admins 999").x + ImGui::CalcTextSize(" Settings ").x + ImGui::CalcTextSize(" Logger ").x + 90.0f));
+					ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
+					ImGui::TextColored(ImColorBanana, "Music isn't playing.");
+					ImGui::SameLine();
+					pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
+					ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
 				}
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.183f, 0.326f, 0.781f, 0.647f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.045f, 0.182f, 0.567f, 0.756f));
-				if (ImGui::Button(pSampMulti->SetText(ICON_FA_USER_FRIENDS " Friends %d##BtnFriends1", pSampMulti->GetFriendsInStream())))
-				{
-					if (!BlackLightFuncs->Menu.bImFriendAndAdminsMenu)
-					{
-						if (set.BlackLight.menu_admins_and_friends != MOD_FRIENDS_MENU)
-							set.BlackLight.menu_admins_and_friends = MOD_FRIENDS_MENU;
-						BlackLightFuncs->Menu.bImFriendAndAdminsMenu = true;
-					}
-					else
-					{
-						if (set.BlackLight.menu_admins_and_friends != MOD_FRIENDS_MENU)
-							set.BlackLight.menu_admins_and_friends = MOD_FRIENDS_MENU;
-					}
-				}
-				pMenu->AddItemDescription(pSampMulti->SetText(BlackLightFuncs->bViewAllFriends ? "Streamed: %d\nAll Friends: %d" : "Streamed: %d\nOnline Friends: %d", pSampMulti->GetFriendsInStream(), pSampMulti->GetFriendsCount()));
 
-				ImGui::SameLine();
-				if (ImGui::Button(pSampMulti->SetText(ICON_FA_USER_SHIELD " Admins %d##BtnAdmins1", pSampMulti->GetAdminsInStream())))
-				{
-					if (!BlackLightFuncs->Menu.bImFriendAndAdminsMenu)
-					{
-						if (set.BlackLight.menu_admins_and_friends != MOD_ADMINS_MENU)
-							set.BlackLight.menu_admins_and_friends = MOD_ADMINS_MENU;
-						BlackLightFuncs->Menu.bImFriendAndAdminsMenu = true;
-					}
-					else
-					{
-						if (set.BlackLight.menu_admins_and_friends != MOD_ADMINS_MENU)
-							set.BlackLight.menu_admins_and_friends = MOD_ADMINS_MENU;
-					}
-				}
-				pMenu->AddItemDescription(pSampMulti->SetText(BlackLightFuncs->bViewAllAdmins ? "Streamed: %d\nAll Admins: %d" : "Streamed: %d\nOnline: %d", pSampMulti->GetAdminsInStream(), pSampMulti->GetAdminsCount()));
-				ImGui::SameLine();
-
-				if (ImGui::Button(ICON_FA_INFO " Logger##BtnPlayerJoiner1"))
-				{
-					if (!BlackLightFuncs->bPlayerJoiner)
-					{
-						if (set.BlackLight.menu_admins_and_friends != MOD_JOINER_LOGGER)
-							set.BlackLight.menu_admins_and_friends = MOD_JOINER_LOGGER;
-						BlackLightFuncs->bPlayerJoiner = true;
-					}
-					else
-					{
-						if (set.BlackLight.menu_admins_and_friends != MOD_JOINER_LOGGER)
-							set.BlackLight.menu_admins_and_friends = MOD_JOINER_LOGGER;
-					}
-				}
-				ImGui::SameLine();
-				if (ImGui::Button(ICON_FA_WRENCH " Settings##BtnSettings1"))
-				{
-					if (!BlackLightFuncs->Menu.bImFriendAndAdminsMenu)
-					{
-						if (set.BlackLight.menu_admins_and_friends != FRIENDS_ADMINS_SETTINGS_MENU)
-							set.BlackLight.menu_admins_and_friends = FRIENDS_ADMINS_SETTINGS_MENU;
-						BlackLightFuncs->Menu.bImFriendAndAdminsMenu = true;
-					}
-					else
-					{
-						if (set.BlackLight.menu_admins_and_friends != FRIENDS_ADMINS_SETTINGS_MENU)
-							set.BlackLight.menu_admins_and_friends = FRIENDS_ADMINS_SETTINGS_MENU;
-					}
-				}
-				ImGui::PopStyleColor(3);
-				ImGui::SameLine();
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.000f, 0.000f, 0.000f, 0.697f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.677f, 0.000f, 0.000f, 0.831f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.000f, 0.000f, 0.000f, 0.697f));
-				if (ImGui::Button("X##CloseHud1"))
-				{
-					if (pSampMulti->IsMenuActive())
-					{
-						BlackLightFuncs->Menu.bImGuiHudMenu = false;
-						if (BlackLightFuncs->Menu.bImFriendAndAdminsMenu == true)
-							BlackLightFuncs->Menu.bImFriendAndAdminsMenu = false;
-					}
-				}
-				ImGui::PopStyleColor(3);
-
-				ImGui::PopStyleVar(2);
-				ImGui::EndChild();
+				break;
 			}
 
-			ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 6.0f));
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 0.0f));
-			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImColorTransparentBlack);
-			ImGui::PushStyleColor(ImGuiCol_Border, ImColorBanana);
-			if (ImGui::BeginChild("##innerChild1", ImVec2(ImGui::GetWindowSize().x - 1.0f, 30.0f), true, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar))
+
+			case MOD_HUD_MENU_RADIO:
 			{
-				ImGui::PopStyleColor(2);
-				ImGui::PopStyleVar(3);
-
-				ImGui::PushFont(pFontArial);
-				ImGui::TextColored(ImColorGreen, "FPS: %.0f", getFPS());
-				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 0.0f));
-				switch (set.BlackLight.menu_hud_set)
-				{
-				case MOD_HUD_MENU_BASIC_INFO:
+				if (BASS_ChannelIsActive(radio_channel))
 				{
 					ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
-
-					ImGui::TextColored(ImColorBanana, "In Vehicle: %d", pSampMulti->GetPlayersInVehicleCount());
-					ImGui::SameLine();
-					ImGui::TextColored(ImColorBanana, "Players: %d", pSampMulti->getPlayersOnServerCount());
-					ImGui::SameLine();
-					ImGui::TextColored(ImColorBanana, "Players In Stream: %d", pSampMulti->GetPlayersInStream());
-					ImGui::SameLine();
-					ImGui::TextColored(ImColorBanana, "AFK Players: %d", pSampMulti->GetAFKPlayersCount());
-					pMenu->AddItemDescription("streamed");
-					ImGui::SameLine();
-					ImGui::TextColored(ImColorBanana, "Vehicles In Stream: %d", pSampMulti->GetVehiclesInStreamCount());
+					ImGui::TextColored(ImColorWhite, " Playing: %s", pSampMulti->RadioUpdateSongTitle(radio_channel));
+					if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+					{
+						ImGui::SetClipboardText(pSampMulti->RadioUpdateSongTitle(radio_channel));
+						addMessageToChatWindow("Radio song name has been copied.");
+					}
 					ImGui::SameLine();
 					pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
 					ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
-					break;
 				}
-
-				case MOD_HUD_MENU_FUNCTIONS: //display hud functions
+				else
 				{
 					ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
-					ImGui::Text("");
-					pMenu->AddHudItem(&BlackLightFuncs->bPlayerGhost, "Ghost##HudItemGhost");
-					pMenu->AddHudItem(&BlackLightFuncs->bVehicleNoCollision, "Vehicle Collision##HudItemVehCol");
-					pMenu->AddHudItem(&BlackLightFuncs->bSmartInvis, "Invisible##HudItemInvis");
-					pMenu->AddHudItem(&BlackLightFuncs->bActorNoFall, "No Fall##HudItemNoFall");
-					pMenu->AddHudItem(&BlackLightFuncs->bFakeAfk, "Fake AFK##HudItemFakeAfk");
-					pMenu->AddHudItem(&BlackLightFuncs->bPizdarvankaPlayer, "Slapper##HudItemSlapper");
-					pMenu->AddHudItem(&BlackLightFuncs->bAirbreakPlayer, "Airbreak##HudItemAirbreak");
-					pMenu->AddHudItem(&BlackLightFuncs->bInvertWalk, "Invert Walk##HudItemInvWalk");
-					pMenu->AddHudItem(&BlackLightFuncs->bBulletTracers, "Bullet Tracers##HudItemBulletTracers");
-					pMenu->AddHudItem(&BlackLightFuncs->bNoSpread, "No Spread##HudItemNoSpread");
-					pMenu->AddHudItem(&BlackLightFuncs->bFastRotation, "Fast Rotation##HudItemFastRotation");
-					pMenu->AddHudItem(&BlackLightFuncs->bVehicleJump, "Vehicle Hop##HudItemVehicleHop");
-					pMenu->AddHudItem(&BlackLightFuncs->bVehicleBoost, "Vehicle Boost##HudItemVehicleBoost");
-
+					ImGui::TextColored(ImColorBanana, "Radio isn't playing.");
 					ImGui::SameLine();
 					pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
 					ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
-					break;
 				}
+				break;
+			}
 
-				case MOD_HUD_MENU_MUSIC:
-				{
-					if (BASS_ChannelIsActive(mp3_channel))
-					{
-						ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
-						ImGui::Text(ICON_FA_MUSIC "  %s  ", __MP3.current_playing_song.c_str());
-						ImGui::SameLine();
-						ImGui::Text(ICON_FA_CLOCK "  Length: %s", mp3_duration);
-						ImGui::SameLine();
-						pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
-						ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
-					}
-					else
-					{
-						ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
-						ImGui::TextColored(ImColorBanana, "Music isn't playing.");
-						ImGui::SameLine();
-						pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
-						ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
-					}
-
-					break;
-				}
-
-
-				case MOD_HUD_MENU_RADIO:
-				{
-					if (BASS_ChannelIsActive(radio_channel))
-					{
-						ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
-						ImGui::TextColored(ImColorWhite, " Playing: %s", pSampMulti->RadioUpdateSongTitle(radio_channel));
-						if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-						{
-							ImGui::SetClipboardText(pSampMulti->RadioUpdateSongTitle(radio_channel));
-							addMessageToChatWindow("Radio song name has been copied.");
-						}
-						ImGui::SameLine();
-						pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
-						ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
-					}
-					else
-					{
-						ImGui::SameLine((ImGui::GetWindowSize().x - ImGui::GetWindowSize().x) + ImGui::CalcTextSize("FPS: 999").x + 20.0f);
-						ImGui::TextColored(ImColorBanana, "Radio isn't playing.");
-						ImGui::SameLine();
-						pSampMulti->ImAllingItem(ImGui::GetWindowWidth() - (ImGui::CalcTextSize("Time Playing: 00:00:00").x + 10.0f));
-						ImGui::TextColored(ImColorOrange, "Time Playing: %s", pSampMulti->getTimeCounter());
-					}
-					break;
-				}
-
-				default:
-					set.BlackLight.menu_hud_set = MOD_HUD_MENU_BASIC_INFO;
-					break;
-				}
-				ImGui::PopStyleVar(1); //ITEM SPACING
-				if (pSampMulti->IsMenuActive() && ImGui::BeginPopupContextWindow("##NewHudMenuSwitch1", ImGuiPopupFlags_MouseButtonRight))
-				{
-					ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-					ImGui::PushStyleColor(ImGuiCol_Button, ImColorBlue);
-					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-					ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.858f, 0.377f, 0.377f, 0.603f));
-					if (ImGui::Button("Basic Info##HudMenuBasicInfo", ImVec2(70.0f, 25.0f)))
-					{
-						if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_BASIC_INFO)
-							set.BlackLight.menu_hud_set = MOD_HUD_MENU_BASIC_INFO;
-					}
-					ImGui::Spacing();
-					if (ImGui::Button("Functions##HudMenuFunctions", ImVec2(70.0f, 25.0f)))
-					{
-						if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_FUNCTIONS)
-							set.BlackLight.menu_hud_set = MOD_HUD_MENU_FUNCTIONS;
-					}
-					ImGui::Spacing();
-					if (ImGui::Button("Music##HudMenuMusicInfo", ImVec2(70.0f, 25.0f)))
-					{
-						if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_MUSIC)
-							set.BlackLight.menu_hud_set = MOD_HUD_MENU_MUSIC;
-					}
-					ImGui::Spacing();
-					if (ImGui::Button("Radio##HudMenuRadioInfo", ImVec2(70.0f, 25.0f)))
-					{
-						if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_RADIO)
-							set.BlackLight.menu_hud_set = MOD_HUD_MENU_RADIO;
-					}
-					ImGui::PopStyleVar(1);
-					ImGui::PopStyleColor(3); //buttons
-					ImGui::EndPopup();
-				}
-				ImGui::PopFont();
-
-
-				ImGui::EndChild();
+			default:
+				set.BlackLight.menu_hud_set = MOD_HUD_MENU_BASIC_INFO;
+				break;
 			}
 			ImGui::PopStyleVar(1);
+			if (pSampMulti->IsMenuActive() && ImGui::BeginPopupContextWindow("##NewHudMenuSwitch1", ImGuiPopupFlags_MouseButtonRight))
+			{
+				ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.000f, 0.078f, 0.078f, 0.504f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.721f, 0.176f, 0.176f, 0.552f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.858f, 0.377f, 0.377f, 0.603f));
+				if (ImGui::Button("Basic Info##HudMenuBasicInfo", ImVec2(70.0f, 25.0f)))
+				{
+					if(set.BlackLight.menu_hud_set != MOD_HUD_MENU_BASIC_INFO)
+					set.BlackLight.menu_hud_set = MOD_HUD_MENU_BASIC_INFO;
+				}
+				if (ImGui::Button("Functions##HudMenuFunctions", ImVec2(70.0f, 25.0f)))
+				{
+					if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_FUNCTIONS)
+						set.BlackLight.menu_hud_set = MOD_HUD_MENU_FUNCTIONS;
+				}
+				if (ImGui::Button("Music##HudMenuMusicInfo", ImVec2(70.0f, 25.0f)))
+				{
+					if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_MUSIC)
+						set.BlackLight.menu_hud_set = MOD_HUD_MENU_MUSIC;
+				}
+				if (ImGui::Button("Radio##HudMenuRadioInfo", ImVec2(70.0f, 25.0f)))
+				{
+					if (set.BlackLight.menu_hud_set != MOD_HUD_MENU_RADIO)
+						set.BlackLight.menu_hud_set = MOD_HUD_MENU_RADIO;
+				}
+				ImGui::PopStyleVar(1);
+				ImGui::PopStyleColor(3); //buttons
+				ImGui::EndPopup();
+			}
+			ImGui::PopFont();
 
-			ImGui::End();
+
+			ImGui::EndChild();
 		}
+		ImGui::PopStyleVar(1);
+
+		ImGui::End();
 	}
+}
+
+static inline ImVec4 ImGuiColorFromD3D(D3DCOLOR col)
+{
+	float a = ((col >> 24) & 0xFF) / 255.0f;
+	float r = ((col >> 16) & 0xFF) / 255.0f;
+	float g = ((col >> 8) & 0xFF) / 255.0f;
+	float b = ((col) & 0xFF) / 255.0f;
+
+	return ImVec4(r, g, b, a);
 }
 
 
@@ -3198,7 +3595,7 @@ void CBlackLightMenu::ImFriendsAndAdminsMenu(bool bEnable)
 							ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
 							ImGui::Button(pSampMulti->SetText("%s", szfriends.c_str()));
 							ImGui::PopStyleColor(3);
-							if (pSampMulti->IsMenuActive() && ImGui::IsItemClicked(ImGuiMouseButton_Right)) //delete friend
+							if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) //delete friend
 							{
 								pSampMulti->DeleteFileText(M0D_FOLDER, "friends", ".ini", szfriends.c_str());
 							}
@@ -3216,28 +3613,15 @@ void CBlackLightMenu::ImFriendsAndAdminsMenu(bool bEnable)
 				{
 					if (BlackLightFuncs->bIsFriend[iplayers])
 					{
-						if (BlackLightFuncs->bUsePlayersColor)
-						{
-							ImGui::Text("");
-							ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers)).x + 8.0f));
-							ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(ImU32(samp_color_get(iplayers))));
-							ImGui::Button(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers));
-							ImGui::PopStyleColor(4);
-						}
-						else
-						{
-							ImGui::Text("");
-							ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers)).x + 8.0f));
-							ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_Text, ImColorWhite);
-							ImGui::Button(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers));
-							ImGui::PopStyleColor(4);
-						}
+						ImGui::Text("");
+						ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers)).x + 8.0f));
+						ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
+						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
+						ImGui::PushStyleColor(ImGuiCol_Text, BlackLightFuncs->bUsePlayersColor ? ImGuiColorFromD3D(samp_color_get(iplayers)) : ImColorWhite);
+						ImGui::Button(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers));
+						ImGui::PopStyleColor(4);
+
 						pMenu->AddItemDescription(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]\nRight click to delete" : "%s(%d)\nRight click to delete", getPlayerName(iplayers), iplayers));
 						if (pSampMulti->IsMenuActive() && ImGui::IsItemClicked(ImGuiMouseButton_Right))
 						{
@@ -3279,7 +3663,7 @@ void CBlackLightMenu::ImFriendsAndAdminsMenu(bool bEnable)
 							ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
 							ImGui::Button(pSampMulti->SetText("%s", szadmins.c_str()));
 							ImGui::PopStyleColor(3);
-							if (pSampMulti->IsMenuActive() && ImGui::IsItemClicked(ImGuiMouseButton_Right)) //delete admin
+							if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) //delete admin
 							{
 								pSampMulti->DeleteFileText(M0D_FOLDER, "admins", ".ini", szadmins.c_str());
 							}
@@ -3297,34 +3681,19 @@ void CBlackLightMenu::ImFriendsAndAdminsMenu(bool bEnable)
 				{
 					if (BlackLightFuncs->bIsAdmin[iplayers])
 					{
-						if (BlackLightFuncs->bUsePlayersColor)
+						ImGui::Text("");
+						ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers)).x + 8.0f));
+						ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
+						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
+						ImGui::PushStyleColor(ImGuiCol_Text, BlackLightFuncs->bUsePlayersColor ? ImGuiColorFromD3D(samp_color_get(iplayers)) : ImColorWhite);
+						ImGui::Button(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers));
+						ImGui::PopStyleColor(4);
+						if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
 						{
-							ImGui::Text("");
-							ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers)).x + 8.0f));
-							ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(ImU32(samp_color_get(iplayers))));
-							ImGui::Button(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers));
-							ImGui::PopStyleColor(4);
-						}
-						else
-						{
-							ImGui::Text("");
-							ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers)).x + 8.0f));
-							ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_Text, ImColorWhite);
-							ImGui::Button(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]" : "%s(%d)", getPlayerName(iplayers), iplayers));
-							ImGui::PopStyleColor(4);
+							pSampMulti->DeleteAdmin(iplayers);
 						}
 						pMenu->AddItemDescription(pSampMulti->SetText(pSampMulti->IsPlayerStreamed(iplayers) ? "%s(%d) [Streamed]\nRight click to delete" : "%s(%d)\nRight click to delete", getPlayerName(iplayers), iplayers));
-						if (pSampMulti->IsMenuActive() && ImGui::IsItemClicked(ImGuiMouseButton_Right))
-						{
-							if (!pSampMulti->IsModDeveloper(iplayers))
-								pSampMulti->DeleteAdmin(iplayers);
-						}
 					}
 				}
 			}
@@ -3441,7 +3810,7 @@ void CBlackLightMenu::ImScoreboard(bool bEnable)
 			ImGui::EndTooltip();
 		}
 		ImGui::SameLine(IM_SCOREBOARD_NAMES_POS_X);
-		ImGui::Text("%s", getPlayerName(g_Players->sLocalPlayerID));
+		ImGui::TextColored(ImGuiColorFromD3D(samp_color_get(g_Players->sLocalPlayerID)), "%s", getPlayerName(g_Players->sLocalPlayerID));
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::BeginTooltip();
@@ -3494,7 +3863,7 @@ void CBlackLightMenu::ImScoreboard(bool bEnable)
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 12.0f);
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.000f, 0.000f, 0.000f, 0.800f));
-		ImGui::BeginChild("##ImSCRBChild2", ImVec2(IM_SCOREBOARD_WIDTH - 10.0f, IM_SCOREBOARD_HEIGHT - 110.0f));
+		ImGui::BeginChild("##ImSCRBChild2", ImVec2(IM_SCOREBOARD_WIDTH - 10.0f, IM_SCOREBOARD_HEIGHT - 113.0f));
 		ImGui::PopStyleColor(1);
 		ImGui::PopStyleVar(2);
 		ImGui::PushFont(pFontArial);
@@ -3513,7 +3882,7 @@ void CBlackLightMenu::ImScoreboard(bool bEnable)
 			{
 				//we are not using pSampMulti->getPlayerScore(id) etc.. 'cus it's for streamed
 				pSampMulti->ImAllingItem(IM_SCOREBOARD_ID_POS_X);
-				ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(color), "%d", players);
+				ImGui::TextColored(ImGuiColorFromD3D(color), "%d", players);
 				if (ImGui::IsItemHovered())
 				{
 					ImGui::BeginTooltip();
@@ -3521,7 +3890,7 @@ void CBlackLightMenu::ImScoreboard(bool bEnable)
 					ImGui::EndTooltip();
 				}
 				ImGui::SameLine(IM_SCOREBOARD_NAMES_POS_X);
-				ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(color), "%s", getPlayerName(players));
+				ImGui::TextColored(ImGuiColorFromD3D(color), "%s", getPlayerName(players));
 				if (ImGui::IsItemHovered())
 				{
 					ImGui::BeginTooltip();
@@ -3565,7 +3934,7 @@ void CBlackLightMenu::ImScoreboard(bool bEnable)
 				/////////////////////////////////////////////////////////
 
 				ImGui::SameLine(IM_SCOREBOARD_SCORE_POS_X);
-				ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(color), "%d", g_Players->pRemotePlayer[players]->iScore);
+				ImGui::TextColored(ImGuiColorFromD3D(color), "%d", g_Players->pRemotePlayer[players]->iScore);
 				if (ImGui::IsItemHovered())
 				{
 					ImGui::BeginTooltip();
@@ -3573,7 +3942,7 @@ void CBlackLightMenu::ImScoreboard(bool bEnable)
 					ImGui::EndTooltip();
 				}
 				ImGui::SameLine(IM_SCOREBOARD_PING_POS_X);
-				ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(color), "%d", g_Players->pRemotePlayer[players]->iPing);
+				ImGui::TextColored(ImGuiColorFromD3D(color), "%d", g_Players->pRemotePlayer[players]->iPing);
 				if (ImGui::IsItemHovered())
 				{
 					ImGui::BeginTooltip();
@@ -3589,14 +3958,14 @@ void CBlackLightMenu::ImScoreboard(bool bEnable)
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 12.0f);
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.000f, 0.000f, 0.000f, 0.800f));
-		ImGui::BeginChild("##ImSCRBChild3", ImVec2(IM_SCOREBOARD_WIDTH - 10.0f, 40));
+		ImGui::BeginChild("##ImSCRBChild3", ImVec2(IM_SCOREBOARD_WIDTH - 10.0f, 36));
 		ImGui::PopStyleColor(1);
 		ImGui::PopStyleVar(2);
 		ImGui::PushFont(pFontArial);
 
 		pSampMulti->ImSpacing(2); pSampMulti->ImAllingItem(3.0f);
 		if (pSampMulti->IsCurrentServer()) ImGui::Text("UIF - United Islands Freeroam | IP: 51.254.85.134:7776");
-		else ImGui::Text("%s | IP: %s", g_SAMP->szHostname, pSampMulti->getServerIp());
+		else ImGui::Text("%s | IP: %s", g_SAMP->szHostname, pSampMulti->SetText("%s:%d", g_SAMP->szIP, g_SAMP->ulPort));
 		ImGui::SameLine(ImGui::GetWindowSize().x - (ImGui::CalcTextSize("Players: 999").x + 6.0f));
 		ImGui::Text("Players: %d", pSampMulti->getPlayersOnServerCount());
 
@@ -3736,7 +4105,7 @@ void CBlackLightMenu::ImInitBlackLightPlayersTags(bool bEnable)
 				ImGui::PushFont(pFontSmall);
 				if (BlackLightFuncs->bIsFriend[iplayers]) ImGui::TextColored(ImColorGreen, "Friend");
 				if (BlackLightFuncs->bIsAdmin[iplayers]) { ImGui::SameLine(); ImGui::TextColored(ImColorRed, "Admin"); }
-				ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(samp_color_get(iplayers)), pSampMulti->IsModDeveloper(iplayers) ? 
+				ImGui::TextColored(ImGuiColorFromD3D(samp_color_get(iplayers)), pSampMulti->IsModDeveloper(iplayers) ?
 					g_Players->pRemotePlayer[iplayers]->pPlayerData->iAFKState == 2 ? "[AFK] [ModDev]%s(%d)" : "[ModDev]%s(%d)" : 
 					g_Players->pRemotePlayer[iplayers]->pPlayerData->iAFKState == 2 ? "[AFK]%s(%d)" : "%s(%d)", getPlayerName(iplayers), iplayers);
 
@@ -3778,6 +4147,116 @@ void CBlackLightMenu::ImInitBlackLightPlayersTags(bool bEnable)
 			samp_names++;
 			sampPatchDisableNameTags(0);
 		}
+	}
+}
+
+void CBlackLightMenu::ImInitBlackLight_RenderBotUI3D(void)
+{
+	if (!g_SAMP)
+		return;
+
+	if (!g_Players)
+		return;
+
+	if(g_BotFuncs->BotSettings.ClientCount == NULL)
+		return;
+
+	traceLastFunc("ImInitBlackLight_RenderBotUI3D");
+
+	for (int botID = 0; botID < g_BotFuncs->BotSettings.ClientCount; botID++)
+	{
+		if (!g_BotFuncs->BotClient[botID].bJoined)
+			continue;
+
+		float* pos = g_BotFuncs->BotClient[botID].fLastOnFootPos;
+		if (!pos) continue;
+
+		// Convert world → screen
+		D3DXVECTOR3 world(pos[0], pos[1], pos[2] + 1.0f);  // +1m above head
+		D3DXVECTOR3 screen;
+		pSampMulti->CalcScreenCoors(&world, &screen);
+
+		if (screen.z < 1.0f) continue;  // behind camera
+
+		// Setup ImGui window at 3D screen position
+		ImVec2 panelPos(screen.x, screen.y);
+
+		char windowName[64];
+		sprintf_s(windowName, "BotUI_%d", botID);
+
+		ImGui::SetNextWindowPos(panelPos, ImGuiCond_Always, ImVec2(0.5f, 1.0f)); // center align
+		ImGui::SetNextWindowBgAlpha(0.45f);
+
+		ImGuiWindowFlags flags =
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_AlwaysAutoResize |
+			ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoSavedSettings |
+			ImGuiWindowFlags_NoCollapse;
+
+		ImGui::PushID(botID);
+		if (ImGui::Begin(windowName, nullptr, flags))
+		{
+			ImGui::Text("BOT %d", botID);
+
+			// ---------------------------------------
+// SKIN CHANGER
+// ---------------------------------------
+			ImGui::Separator();
+			ImGui::Text("Skin:");
+
+			static int newSkin[64];   // storage for all bots
+
+			// Display current skin in the input box
+			newSkin[botID] = g_BotFuncs->BotClient[botID].iCurrentSkinID;
+
+			ImGui::SetNextItemWidth(90);
+			if (ImGui::InputInt("##skin", &newSkin[botID], 1, 5))
+			{
+				if (newSkin[botID] < 0) newSkin[botID] = 0;
+				if (newSkin[botID] > 299) newSkin[botID] = 299;
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Apply"))
+			{
+				g_BotFuncs->SetBotSkin(botID, newSkin[botID]);
+			}
+
+			ImGui::Separator();
+
+			// Movement controls
+			if (ImGui::Button(ICON_FA_ARROW_UP)) {
+				g_BotFuncs->MoveBotForward(botID, 0.3f);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("UP")) {
+				g_BotFuncs->MoveBotUp(botID, 0.3f);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Rotate")) {
+				g_BotFuncs->RotateBot(botID, 15.0f);
+			}
+
+			if (ImGui::Button(ICON_FA_ARROW_LEFT)) {
+				g_BotFuncs->MoveBotLeft(botID, 0.3f);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button(ICON_FA_ARROW_DOWN)) {
+				g_BotFuncs->MoveBotBackward(botID, 0.3f);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button(ICON_FA_ARROW_RIGHT)) {
+				g_BotFuncs->MoveBotRight(botID, 0.3f);
+			}
+
+			if (ImGui::Button("DOWN")) {
+				g_BotFuncs->MoveBotDown(botID, 0.3f);
+			}
+
+			ImGui::End();
+		}
+		ImGui::PopID();
 	}
 }
 
@@ -3900,7 +4379,13 @@ void CBlackLightMenu::ImInitBlakcLightRadioVolume(bool bEnable)
 		{
 			ImGui::PopStyleColor(1);
 			ImGui::PopStyleVar(2);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg,ImVec4(0.520f, 0.578f, 0.622f, 0.219f));
+			ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.520f, 0.578f, 0.622f, 0.219f));
+			ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.352f, 0.371f, 0.393f, 0.527f));
+			ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.842f, 0.863f, 0.891f, 1.000f));
+			ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.813f, 0.816f, 0.821f, 0.711f));
 			ImGui::VSliderFloat("##RadioVolumeSlider", ImVec2(30.0f, 200.0f), &__Radio.radio_volume, 0.00f, 1.00, "%.2f");
+			ImGui::PopStyleColor(5);
 
 			ImGui::End();
 		}
@@ -3915,217 +4400,220 @@ void CBlackLightMenu::ImInitBlakcLightRadioVolume(bool bEnable)
 		{
 			ImGui::PopStyleColor(1);
 			ImGui::PopStyleVar(2);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.520f, 0.578f, 0.622f, 0.219f));
+			ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.520f, 0.578f, 0.622f, 0.219f));
+			ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.352f, 0.371f, 0.393f, 0.527f));
+			ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.842f, 0.863f, 0.891f, 1.000f));
+			ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.813f, 0.816f, 0.821f, 0.711f));
 			ImGui::VSliderFloat("##MP3VolumeSlider", ImVec2(30.0f, 200.0f), &__MP3.mp3_volume, 0.00f, 1.00, "%.2f");
-
+			ImGui::PopStyleColor(5);
 			ImGui::End();
 		}
 	}
 }
 
-char szPlayURL[1024] = "Input your audio URL";
-void CBlackLightMenu::ImInitBlackLight_AudioStreamPlayer(bool bEnable)
-{
-	if (!bEnable)
-		return;
-
-	traceLastFunc("ImInitBlackLight_AudioStreamPlayer()");
-
-	if (g_Scoreboard->iIsEnabled)
-		return;
-
-	if (g_Input->iInputEnabled) //samp chat input is active
-		return;
-
-	if (IS_CHEAT_PANIC_ACTIVE || gta_menu_active())
-		return;
-
-	if (bEnable)
-	{
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImColorTransparentBlack);
-		ImGui::SetNextWindowSize(ImVec2(460.0f, 45.0f));
-		ImGui::SetNextWindowPos(ImVec2(pPresentParam.BackBufferWidth / 2 - 480.0f / 2, 0.0f));
-		if (ImGui::Begin("##AudioStreamPlayer", &bEnable, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollWithMouse))
-		{
-			ImGui::PopStyleColor(1);
-			ImGui::PopStyleVar(2);
-
-			ImGui::SetNextItemWidth(400.0f);
-			if (ImGui::InputText("##InputURL", szPlayURL, IM_ARRAYSIZE(szPlayURL), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_NoHorizontalScroll | ImGuiInputTextFlags_AutoSelectAll))
-			{
-				g_RakClient2->PlayAudioStream(szPlayURL);
-			}
-			if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-				pSampMulti->AddText_to_Text(szPlayURL, *(char*)ImGui::GetClipboardText());
-			ImGui::SameLine();
-			ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-			ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.000f, 0.766f, 0.091f, 0.000f));
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.000f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.000f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.000f));
-			if (ImGui::Button(ICON_FA_PLAY, {40.0f, 18.0f}))
-			{
-				g_RakClient2->PlayAudioStream(szPlayURL);
-			}			
-			pMenu->AddItemDescription("Play");
-			ImGui::PopStyleColor(4);
-			ImGui::PopStyleVar(2);
-			
-			ImGui::End();
-		}
-	}
-}
-
-void CBlackLightMenu::ImMenuInit_RouteRecording(bool bEnable)
-{
-	if (!bEnable)
-		return;
-
-	if (!pGameInterface || IS_CHEAT_PANIC_ACTIVE || gta_menu_active())
-		return;
-
-	traceLastFunc("ImMenuInit_RouteRecording()");
-
-	if (bEnable && pSampMulti->IsOurPlayerInCar())
-	{
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImColorTransparentBlack);
-		ImGui::SetNextWindowSize(ImVec2(set.recording_status == RECORDING_RECORD ? 430.0f : 350.0f, 40.0f));
-	//	ImGui::SetNextWindowPos(ImVec2(0.0f, (float)pPresentParam.BackBufferHeight - 200.0f));
-		if (ImGui::Begin("##ImRouterRecorder", &bEnable,   ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollWithMouse))
-		{
-			ImGui::PopStyleColor(1);
-			ImGui::PopStyleVar(2);
-
-			ImGui::PushStyleColor(ImGuiCol_Text, ImColorWhite);
-
-			ImGui::PushStyleColor(ImGuiCol_Button, set.recording_status == RECORDING_RECORD ? pSampMulti->ColorOpacityPulse(ImColorGreen) : ImColorGreen);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorGreen);
-			if (ImGui::Button("RECORD " ICON_FA_PLAY))
-			{
-				set.recording_status = RECORDING_RECORD;
-			}
-			ImGui::PopStyleColor(3);
-			ImGui::SameLine();
-
-			ImGui::PushStyleColor(ImGuiCol_Button, set.recording_status == RECORDING_RECORD ? pSampMulti->ColorOpacityPulse(ImColorRed) : ImColorRed);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorGreen);
-			if (ImGui::Button("STOP " ICON_FA_STOP_CIRCLE))
-			{
-				set.recording_status = RECORDING_OFF;
-			}
-			ImGui::PopStyleColor(3);
-
-			ImGui::SameLine();
-			ImGui::PushStyleColor(ImGuiCol_Button, set.recording_status == RECORDING_RECORD ? pSampMulti->ColorOpacityPulse(ImColorBlue) : ImColorBlue);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorGreen);
-			if (ImGui::Button("PLAY " ICON_FA_PLAY_CIRCLE))
-			{
-				set.recording_status = RECORDING_PLAY;
-			}
-			ImGui::PopStyleColor(3);
-			ImGui::SameLine();
-			ImGui::PushStyleColor(ImGuiCol_Button, rec_continueAfterFin ? pSampMulti->ColorOpacityPulse(ImColorAqua) : ImColorAqua);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorAqua);
-			if (ImGui::Button("LOOP "))
-			{
-				rec_continueAfterFin ^= true;
-			}
-			ImGui::PopStyleColor(3);
-
-			ImGui::SameLine();
-			ImGui::TextColored(ImColorBanana, "Status: ");
-			ImGui::SameLine();
-
-			switch (set.recording_status)
-			{
-			case RECORDING_OFF:
-			{
-				ImGui::TextColored(ImColorRed, "OFF ");
-				break;
-			}
-
-			case RECORDING_PLAY:
-			{
-				ImGui::TextColored(ImColorBanana, "Playing route " ICON_FA_ROUTE);
-				break;
-			}
-
-			case RECORDING_RECORD:
-			{
-				ImGui::TextColored(ImColorGreen, "REC " ICON_FA_CAMERA);
-				break;
-			}
-
-			default:
-				set.recording_status = RECORDING_OFF;
-				break;
-
-			}
-
-			ImGui::PopStyleColor(1); //text color white
-			ImGui::End();
-		}
-	}
-}
-
-
-
+//chatgpt 5 made this speedmeter in a few seconds based on online picture from gta v 
+//well this AI stuff saved me 5 days of calculations and testing lmao
 void CBlackLightMenu::ImInitBlackLight_NewSpeedometer(bool bEnable)
 {
-	if (!bEnable)
-		return;
+	if (!bEnable) return;
+	if (g_Scoreboard->iIsEnabled) return;
 
-	traceLastFunc("ImInitBlackLight_NewSpeedometer()");
+	static float alpha = 0.0f;
+	static float rpmSmooth = 0.0f;          // smoothed needle
+	static float rpmTarget = 0.0f;          // target RPM value
+	static float blinkTimer = 0.0f;         // limiter blink
 
-	if (g_Scoreboard->iIsEnabled)
-		return;
+	bool inCar = pSampMulti->IsOurPlayerInCar();
+	float dt = ImGui::GetIO().DeltaTime;
 
-	if (bEnable && pSampMulti->IsOurPlayerInCar())
+	// Fade animation -----------------------------------------
+	alpha += (inCar ? 1.0f : -1.0f) * dt * 3.0f;
+	alpha = ImClamp(alpha, 0.0f, 1.0f);
+	if (alpha <= 0.0f) return;
+
+	// ---------------------------------------------------------
+	float speed = pSampMulti->getVehicleSpeed(g_Players->sLocalPlayerID, 274.0f);
+
+	// Convert speed to RPM (0–9 scale)
+	rpmTarget = ImClamp(speed * 0.14f, 0.0f, 9.0f);
+
+	// ---------------------------------------------------------
+	// 🔥 SOFT LIMITER – sporiji ulaz u crveno područje
+	// ---------------------------------------------------------
+	if (rpmTarget > 8.0f)
 	{
-		static bool bSwitchMultipler = false;
+		// uspori pristup od 8.0 do 9.0 (limiter band)
+		float over = rpmTarget - 8.0f;
+		rpmTarget = 8.0f + over * 0.25f;   // uspori 75%
+	}
+
+	// Needle smoothing (slow)
+	float needleSpeed = 4.0f * dt;
+	rpmSmooth += (rpmTarget - rpmSmooth) * needleSpeed;
+
+	// Limiter blink update
+	if (rpmSmooth >= 8.0f)
+		blinkTimer += dt * 8.0f;       // fast blinking
+	else
+		blinkTimer = 0.0f;
+
+	// Window --------------------------------------------------
+	const float size = 240.0f;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, BlackLightFuncs->bSpeedmeterBackground ? ImColorTransparentBlack : ImColorNone);
+
+	ImGui::SetNextWindowSize(ImVec2(size, size));
+	ImGui::SetNextWindowPos(ImVec2(
+		ImGui::GetIO().DisplaySize.x - size - 30,
+		ImGui::GetIO().DisplaySize.y - size - 40
+	));
+
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground;
+
+	if (!ImGui::Begin("##FH_Speedo", NULL, flags))
+	{
+		ImGui::End();
+		ImGui::PopStyleColor();
+		ImGui::PopStyleVar(2);
+		return;
+	}
+
+	//----------------------------------------------------------
+	// DRAWING
+	//----------------------------------------------------------
+	ImDrawList* draw = ImGui::GetWindowDrawList();
+
+	ImVec2 center(
+		ImGui::GetWindowPos().x + size * 0.50f,
+		ImGui::GetWindowPos().y + size * 0.60f
+	);
+
+	float radius = size * 0.42f;
+
+	float startA = IM_PI * 0.70f;
+	float endA = IM_PI * 2.30f;
+
+	//----------------------------------------------------------
+	// BACKGROUND ARC
+	//----------------------------------------------------------
+	draw->PathArcTo(center, radius, startA, endA, 90);
+	draw->PathStroke(ImColor(255, 255, 255, (int)(35 * alpha)), false, 6.0f);
+
+	//----------------------------------------------------------
+	// 🔥 REDLINE ARC (with blinking when in limiter)
+	//----------------------------------------------------------
+	int redAlpha = (rpmSmooth >= 8.0f)
+		? (int)(150 + 105 * fabsf(sinf(blinkTimer)))   // blink
+		: 220;
+
+	float redStart = IM_PI * 2.10f;
+	draw->PathArcTo(center, radius, redStart, endA, 20);
+	draw->PathStroke(ImColor(255, 40, 40, (int)(redAlpha * alpha)), false, 6.0f);
+
+	//----------------------------------------------------------
+	// TICKS
+	//----------------------------------------------------------
+	for (int i = 0; i <= 9; i++)
+	{
+		float t = (float)i / 9.0f;
+		float a = startA + t * (endA - startA);
+
+		ImVec2 p1(center.x + cosf(a) * (radius - 12),
+			center.y + sinf(a) * (radius - 12));
+
+		ImVec2 p2(center.x + cosf(a) * radius,
+			center.y + sinf(a) * radius);
+
+		draw->AddLine(p1, p2, ImColor(255, 255, 255, (int)(120 * alpha)), 2.0f);
+	}
+
+	//----------------------------------------------------------
+	// NEEDLE
+	//----------------------------------------------------------
+	float angle = startA + (rpmSmooth / 9.0f) * (endA - startA);
+
+	ImVec2 needleEnd(
+		center.x + cosf(angle) * (radius * 0.92f),
+		center.y + sinf(angle) * (radius * 0.92f)
+	);
+
+	draw->AddLine(center, needleEnd,
+		ImColor(255, 255, 255, (int)(255 * alpha)), 3.0f);
+
+	draw->AddCircleFilled(center, 6,
+		ImColor(255, 255, 255, (int)(255 * alpha)));
+
+	//----------------------------------------------------------
+	// SPEED TEXT
+	//----------------------------------------------------------
+	ImGui::PushFont(pFontSpeedmeter);
+
+	char spd[8];
+	sprintf_s(spd, "%.0f", speed);
+
+	draw->AddText(
+		ImVec2(center.x - 30, center.y + 20),
+		ImColor(255, 255, 255, (int)(255 * alpha)),
+		spd
+	);
+
+	draw->AddText(
+		ImVec2(center.x + 25, center.y + 20),
+		ImColor(255, 200, 0, (int)(255 * alpha)),
+		"KMH"
+	);
+
+	ImGui::PopFont();
+
+	ImGui::End();
+
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(2);
+}
+
+void CBlackLightMenu::ImInitBlackLight_GoCMenu(void)
+{
+	traceLastFunc("ImInitBlackLight_GoCMenu()");
+
+	if ((GoC->main == stGoC::main_funcs::GOC_MAIN_NONE) && (GoC->faker == stGoC::faker_funcs::GOC_FAKER_NONE))
+		return;
+	else if((GoC->main == stGoC::main_funcs::GOC_MAIN_NONE) && (GoC->faker != stGoC::faker_funcs::GOC_FAKER_NONE) || 
+		(GoC->main != stGoC::main_funcs::GOC_MAIN_NONE) && (GoC->faker != stGoC::faker_funcs::GOC_FAKER_NONE) || 
+		(GoC->main != stGoC::main_funcs::GOC_MAIN_NONE) && (GoC->faker == stGoC::faker_funcs::GOC_FAKER_NONE))
+	{
+		if (g_Scoreboard->iIsEnabled)
+			return;
+
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImColorNone);
-		ImGui::SetNextWindowSize(ImVec2(90.0f, 60.0f));
-		if (ImGui::Begin("##NewSpeedometer", &bEnable, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollWithMouse))
+		ImGui::SetNextWindowSize(ImVec2(320.0f, 110.0f));
+		if (ImGui::Begin("##GoCmenu", &BlackLightFuncs->Menu.bMain_Menu, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollWithMouse))
 		{
 			ImGui::PopStyleColor(1);
 			ImGui::PopStyleVar(2);
 
-			ImGui::PushFont(pFontSpeedmeter);
+			ImGui::PushFont(pFontArial);
 
-			ImGui::PushStyleColor(ImGuiCol_Border, ImColorWhite);
-			ImGui::PushStyleColor(ImGuiCol_Text, ImColorWhite);
+			ImGui::PushStyleColor(ImGuiCol_Border, ImColorNone);
+			ImGui::PushStyleColor(ImGuiCol_Text, ImColorBanana);
 			ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColorTransparentBlack);
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-			ImGui::Button(pSampMulti->SetText("%.1f", pSampMulti->getVehicleSpeed(g_Players->sLocalPlayerID, bSwitchMultipler ? 170.0f : 274.0f)), ImVec2(70.0f, 35.0f));
-			ImGui::PopStyleColor(5);
-			if (ImGui::IsItemHovered() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_C)))
-			{
-				if (bSwitchMultipler == false)
-				{
-					addMessageToChatWindow("Switched to KM-H");
-					bSwitchMultipler = true;
-				}
-				else
-				{
-					addMessageToChatWindow("Switched to MP-H");
-					bSwitchMultipler = false;
-				}
-			}
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.5f);
+
+			ImGui::Button(szSync, ImVec2(ImGui::CalcTextSize(szSync).x + 5.0f, 25.0f));
+			ImGui::Button(szMainFunc, ImVec2(ImGui::CalcTextSize(szMainFunc).x + 5.0f, 25.0f));
+			ImGui::Button(szFakerFunc, ImVec2(ImGui::CalcTextSize(szFakerFunc).x + 5.0f, 25.0f));
 
 			ImGui::PopStyleVar(2);
+			ImGui::PopStyleColor(5);
+
 			ImGui::PopFont();
 
 			ImGui::End();
@@ -4205,7 +4693,7 @@ void CBlackLightMenu::ImInitBlackLight_DamagerMenu(void)
 	}
 }
 
-void CBlackLightMenu::ImInitBlackLight_BotInfoIDMenu(bool bEnable)
+/*void CBlackLightMenu::ImInitBlackLight_BotInfoIDMenu(bool bEnable)
 {
 	if (!bEnable)
 		return;
@@ -4228,74 +4716,66 @@ void CBlackLightMenu::ImInitBlackLight_BotInfoIDMenu(bool bEnable)
 	if (BlackLightFuncs->Menu.ESPMenus.bImBlackLightPlayersInfo)
 		return;
 
-	for (int players = 0; players < SAMP_MAX_PLAYERS; players++)
+	for (int i = g_BotFuncs->BotSettings.ClientCount; i > 1; i--)
 	{
-		if (g_Players->iIsListed[players] != 1)
+		actor_info* botsinfo = getGTAPedFromSAMPPlayerID(g_BotFuncs->BotClient[i].playerID);
+
+		if (!botsinfo)
 			continue;
 
-		if (g_BotFuncs->uiIsBot[players][0] == 1)
+		float* fQuat = &botsinfo->base.matrix[12];
+		D3DXVECTOR3 getvec, rendervec;
+		getvec.x = fQuat[0];
+		getvec.y = fQuat[1];
+		getvec.z = fQuat[2];
+		pSampMulti->CalcScreenCoors(&getvec, &rendervec);
+
+		if (rendervec.z < 1.f)
+			continue;
+
+		if (bEnable)
 		{
-			for (int j = 0; j < 2; j++)
-				for (int i = g_BotFuncs->BotSettings.ClientCount - 1; i >= 0; i--)
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImColorTransparentBlack);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::SetNextWindowPos(ImVec2(rendervec.x, rendervec.y));
+			ImGui::SetNextWindowSize(ImVec2(150.0f, 60.0f));
+			if (ImGui::Begin(pSampMulti->SetText("##MenuBotsInfoID%d", i), &bEnable,
+				ImGuiWindowFlags_NoBringToFrontOnFocus |
+				ImGuiWindowFlags_NoFocusOnAppearing |
+				ImGuiWindowFlags_NoCollapse |
+				ImGuiWindowFlags_NoSavedSettings |
+				ImGuiWindowFlags_NoResize |
+				ImGuiWindowFlags_NoScrollbar |
+				ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoTitleBar))
+			{
+				ImGui::PopStyleVar(1);
+				ImGui::PopStyleColor(1);
+
+				ImGui::PushFont(pFontSmall);
+				ImGui::Text("%s\nBOT ID: %d", getPlayerName(g_BotFuncs->BotClient[i].playerID), i);
+				ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, pSampMulti->IsMenuActive() ? ImColorDeepOrange : ImColorTransparentBlack);
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
+				ImGui::PushID(i);
+				if (ImGui::Button("Bot Say Info##BotInfoSayOfBot", ImVec2(-FLT_MIN, 22.0f)))
 				{
-					actor_info* botsinfo = getGTAPedFromSAMPPlayerID(players);
+					if (!pSampMulti->IsMenuActive())
+						return;
 
-					if (!botsinfo)
-						continue;
-
-					float* fQuat = &botsinfo->base.matrix[12];
-					D3DXVECTOR3 getvec, rendervec;
-					getvec.x = fQuat[0];
-					getvec.y = fQuat[1];
-					getvec.z = fQuat[2];
-					pSampMulti->CalcScreenCoors(&getvec, &rendervec);
-
-					if (rendervec.z < 1.f)
-						continue;
-
-					if (bEnable)
-					{
-						ImGui::PushStyleColor(ImGuiCol_WindowBg, ImColorTransparentBlack);
-						ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-						ImGui::SetNextWindowPos(ImVec2(rendervec.x, rendervec.y));
-						ImGui::SetNextWindowSize(ImVec2(150.0f, 60.0f));
-						if (ImGui::Begin(pSampMulti->SetText("##MenuBotsInfoID%d", i), &bEnable,
-							ImGuiWindowFlags_NoBringToFrontOnFocus |
-							ImGuiWindowFlags_NoFocusOnAppearing |
-							ImGuiWindowFlags_NoCollapse |
-							ImGuiWindowFlags_NoSavedSettings |
-							ImGuiWindowFlags_NoResize |
-							ImGuiWindowFlags_NoScrollbar |
-							ImGuiWindowFlags_NoMove |
-							ImGuiWindowFlags_NoTitleBar))
-						{
-							ImGui::PopStyleVar(1);
-							ImGui::PopStyleColor(1);
-
-							ImGui::PushFont(pFontSmall);
-							ImGui::Text("%s\nBOT ID: %d", getPlayerName(players), g_BotFuncs->uiIsBot[players][1]);
-							ImGui::PushStyleColor(ImGuiCol_Button, ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonHovered, pSampMulti->IsMenuActive() ? ImColorDeepOrange : ImColorTransparentBlack);
-							ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColorTransparentBlack);
-							ImGui::PushID(i);
-							if (ImGui::Button("Bot Say Info##BotInfoSayOfBot", ImVec2(-FLT_MIN, 22.0f)))
-							{
-								if (!pSampMulti->IsMenuActive())
-									return;
-
-								pSampMulti->SayPlayerInfo(players);
-							}
-							ImGui::Separator();
-							ImGui::PopID();
-							ImGui::PopStyleColor(3);
-							ImGui::PopFont();
-							ImGui::End();
-						}
-					}
+					pSampMulti->SayPlayerInfo(g_BotFuncs->BotClient[i].playerID);
 				}
+				ImGui::Separator();
+				ImGui::PopID();
+				ImGui::PopStyleColor(3);
+				ImGui::PopFont();
+
+				ImGui::End();
+			}
 		}
 	}
 }
+*/
 
 
 //class menu definitions
@@ -4325,14 +4805,16 @@ int CBlackLightMenu::GetLastMenu(void)
 		menus == MENU_PLAYER_BOTS ||
 		menus == MENU_PLAYER_MONEY ||
 		menus == MENU_PLAYER_WARP ||
+		menus == MENU_PLAYER_STICKMOD ||
 		menus == MENU_PLAYER_TELEPORT_TO_VEHICLE ||
 		menus == MENU_PLAYER_WARP_VEHICLE_TO_ME ||
-		menus == MENU_PLAYER_DEATHMATCH ||
-		menus == MENU_PLAYER_ANIMS)
+		menus == MENU_PLAYER_DEATHMATCH)
 		return MENU_PLAYER;
 	else if (menus == MENU_ESP_TP_TO_OBJECTS ||
 		menus == MENU_ESP_TP_TO_PICKUPS)
 		return MENU_ESP;
+	else if (menus == MENU_VEHICLE_GOC)
+		return MENU_VEHICLE;
 	else if (menus == MENU_PLAYER_COPYCHAT ||
 		menus == MENU_PLAYER_FOLLOWTROLL ||
 		menus == MENU_PLAYER_FUCKTROLL ||
@@ -4340,8 +4822,10 @@ int CBlackLightMenu::GetLastMenu(void)
 		menus == MENU_PLAYER_BULLETS_SEND ||
 		menus == MENU_PLAYER_PIZDARVANKA_TARGET)
 		return MENU_PLAYER_TARGET_FUNCS;
-	else if (menus == MENU_PLAYER_BOT_TROLLS)
+	else if (menus == MENU_PLAYER_BOT_TROLLS || menus == MENU_BOT_FIND_VEHICLES)
 		return MENU_PLAYER_BOTS;
+	//else if (menus == MENU_PLAYER_BOTS)
+		//return MENU_BOTS_CONNECTED;
 	else if (menus == MENU_BOT_TROLL_SET_TARGET)
 		return MENU_PLAYER_BOT_TROLLS;
 	else if (menus == MENU_HUD_SETTINGS ||
@@ -4349,13 +4833,6 @@ int CBlackLightMenu::GetLastMenu(void)
 		return MENU_SETTINGS;
 	else if (menus == MENU_RADIO_STATIONS)
 		return MENU_RADIO;
-	else if (menus == MENU_VEHROUTE_SAVED_RECORDINGS)
-		return MENU_VEH_ROUTE_RECORDING;
-	else if (menus == MENU_VEH_HANDLING ||
-		menus == MENU_VEH_ROUTE_RECORDING ||
-		menus == MENU_VEH_VEHICLE_TUNING ||
-		menus == MENU_VEH_WARP_VEHICLES)
-		return MENU_VEHICLE;
 
 	return MENU_MAIN;
 }
@@ -4438,6 +4915,7 @@ void CBlackLightMenu::AddButton(bool *bEnable, const char* szButtonName, float f
 	ImGui::PopStyleVar(2);
 }
 
+//fixed dec 2025 update
 bool CBlackLightMenu::AddStaticButton(const char* szBtnName, float fWidthDecrease)
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -4446,12 +4924,11 @@ bool CBlackLightMenu::AddStaticButton(const char* szBtnName, float fWidthDecreas
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.000f, 0.000f, 0.000f, 0.600f));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.516f, 0.896f, 0.169f, 0.478f));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.139f, 0.139f, 0.139f, 0.493f));
-	if (ImGui::Button(szBtnName,pMenu->MenuItemMatchMenuWidth(fWidthDecrease == 0.0f ? 0.0f : fWidthDecrease)))
-	{
-		 return true;
-	}
+	ImGui::Button(szBtnName,pMenu->MenuItemMatchMenuWidth(fWidthDecrease == 0.0f ? 0.0f : fWidthDecrease));
 	ImGui::PopStyleColor(4);
 	ImGui::PopStyleVar(2);
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		return true;
 
 	return false;
 }
@@ -4519,7 +4996,7 @@ void CBlackLightMenu::AddIncDecButtons(int& settings, int increase_power, int ma
 	}
 	if (ImGui::IsItemHovered())
 	{
-		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(VK_OEM_PLUS)))
+		if (ImGui::IsKeyPressed(ImGuiKey_RightArrow))
 		{
 			if (settings != max_value)
 				settings += increase_power;
@@ -4556,7 +5033,7 @@ void CBlackLightMenu::AddIncDecButtons(int& settings, int increase_power, int ma
 	}
 	if (ImGui::IsItemHovered())
 	{
-		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex( VK_OEM_MINUS)))
+		if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow))
 		{
 			if (settings != min_value)
 				settings -= increase_power;
@@ -4599,7 +5076,7 @@ void CBlackLightMenu::AddIncDecButtons(float& settings, float increase_size, flo
 	}
 	if (ImGui::IsItemHovered())
 	{
-		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_NumPlus)))
+		if (ImGui::IsKeyPressed(ImGuiKey_RightArrow))
 		{
 			if (settings != max_value)
 				settings += increase_size;
@@ -4636,7 +5113,7 @@ void CBlackLightMenu::AddIncDecButtons(float& settings, float increase_size, flo
 	}
 	if (ImGui::IsItemHovered())
 	{
-		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_NumMinus)))
+		if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow))
 		{
 			if (settings != min_value)
 				settings -= increase_size;
@@ -4680,7 +5157,7 @@ void CBlackLightMenu::AddIncDecButtons(uint16_t& settings, int increase_power, i
 	}
 	if (ImGui::IsItemHovered())
 	{
-		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_NumPlus)))
+		if (ImGui::IsKeyPressed(ImGuiKey_RightArrow))
 		{
 			if (settings != max_value)
 				settings += increase_power;
@@ -4716,7 +5193,7 @@ void CBlackLightMenu::AddIncDecButtons(uint16_t& settings, int increase_power, i
 	}
 	if (ImGui::IsItemHovered())
 	{
-		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(VK_OEM_MINUS)))
+		if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow))
 		{
 			if (settings != min_value)
 				settings -= increase_power;

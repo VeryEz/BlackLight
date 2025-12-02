@@ -301,6 +301,7 @@ void HandleRPCPacketFunc(unsigned char id, RPCParameters *rpcParams, void(*callb
 				}
 				break;
 			}
+
 			case RPC_SetVehicleHealth:
 			{
 				if (isCheatPanicEnabled() || !set.enable_extra_godmode || !cheat_state->_generic.hp_cheat) break;
@@ -364,6 +365,7 @@ void HandleRPCPacketFunc(unsigned char id, RPCParameters *rpcParams, void(*callb
 				if (BlackLightFuncs->bChatboxLog)
 					LogChatbox(false, "%s: %s", getPlayerName(playerId), szText);
 
+
 				uint8_t startBracket = 0, endBracket = 0;
 				bool bCheckID = false;
 				std::string message(szText);
@@ -393,17 +395,6 @@ void HandleRPCPacketFunc(unsigned char id, RPCParameters *rpcParams, void(*callb
 				//if (message.find(">blok", strlen(message.c_str())))
 					//addMessageToChatWindow("found");
 
-				if (BlackLightFuncs->Mute.bMutedPlayers[playerId]) //is muted
-				{
-					if (BlackLightFuncs->bMutedPlayerChatting)
-					{
-						if (message.find(getPlayerName(playerId), strlen(message.c_str())) ||
-							message.find(pSampMulti->SetText("%d", g_Players->sLocalPlayerID), strlen(message.c_str())))
-							addMessageToChatWindow("Muted Player %d", playerId);
-					}
-					return;
-				}
-
 				if (BlackLightFuncs->_CopyChat.bCopyChat[playerId])
 				{
 					if (set.BlackLight.Target.TargetPlayer_CopyChat == playerId)
@@ -412,7 +403,6 @@ void HandleRPCPacketFunc(unsigned char id, RPCParameters *rpcParams, void(*callb
 							return addMessageToChatWindow("You can't troll Mod Developer %s", getPlayerName(playerId));
 						if (BlackLightFuncs->bIsFriend[playerId])
 							return addMessageToChatWindow("You can't troll players from your friend list!");
-
 						if (message.length() == message.find(getPlayerName(g_Players->sLocalPlayerID), message.length()))
 						{
 							std::string textf;
@@ -437,6 +427,17 @@ void HandleRPCPacketFunc(unsigned char id, RPCParameters *rpcParams, void(*callb
 					for (int i = g_BotFuncs->BotSettings.ClientCount - 1; i >= 0; i--)
 						g_BotFuncs->Bot_SendRPC(i, RPC_Chat, bsSend, HIGH_PRIORITY, RELIABLE_ORDERED, 0, false);
 
+				}
+
+				if (BlackLightFuncs->Mute.bMutedPlayers[playerId]) //is muted
+				{
+					if (BlackLightFuncs->bMutedPlayerChatting)
+					{
+						if (message.find(getPlayerName(playerId), strlen(message.c_str())) ||
+							message.find(pSampMulti->SetText("%d", g_Players->sLocalPlayerID), strlen(message.c_str())))
+							addMessageToChatWindow("Muted Player %d", playerId);
+					}
+					return;
 				}
 
 				break;
@@ -798,7 +799,7 @@ static void cmd_change_server(char *param)	// 127.0.0.1 7777 Username Password
 	int ipc = sscanf(param, "%s%s%s%s", IP, Port, Nick, Password);
 	if (ipc < 2)
 	{
-		addMessageToChatWindow("USAGE: /.bl_csrv <ip> <port> <Username> <Server Password>");
+		addMessageToChatWindow("USAGE: /mod_change_server <ip> <port> <Username> <Server Password>");
 		addMessageToChatWindow("Variables that are set to \"NULL\" (capitalized) will be ignored.");
 		addMessageToChatWindow("If you set the Password to \"NULL\" it is set to <no server password>.");
 		addMessageToChatWindow("Username and password can also be left out completely.");
@@ -924,17 +925,6 @@ static void cmd_tele_locations(char *)
 	}
 
 	addMessageToChatWindow("To teleport use the mod menu or: /.bl.tele_loc <location name>");
-}
-
-static void cmd_playaudiostream(char* param)
-{
-	if (!strlen(param))
-	{
-		cheat_state_text("Usage: /.bl.url <url> ");
-		return;
-	}
-
-	g_RakClient2->PlayAudioStream(param);
 }
 
 static void cmd_pickup(char *params)
@@ -1298,6 +1288,37 @@ static void cmd_change_name(char* param)
 	setLocalPlayerName(Nick);
 	changeServer(g_SAMP->szIP, g_SAMP->ulPort, "");
 	ZeroMemory(Nick, sizeof(Nick));
+}
+
+void cmd_stil_car(char* szPlayerid)
+{
+	if (szPlayerid[0] == '\0')
+		return addMessageToChatWindow("/.bl.stilcc");
+
+	char* param_veh;
+	param_veh = szPlayerid;
+
+	int playerid = atoi(param_veh);
+	int VehicleID = getPlayerSAMPVehicleID(playerid);
+	struct vehicle_info* vehicle = getGTAVehicleFromSAMPVehicleID(VehicleID);
+
+	actor_info* me = actor_info_get(-1, NULL);
+
+	if (me->state == CHEAT_STATE_VEHICLE)
+		return;
+
+	if (!strlen(szPlayerid))
+	{
+		cheat_state_text("Info: Use /.bl.stilcc <id player in car>");
+		return;
+	}
+
+	if (g_Vehicles->iIsListed[VehicleID] != 1 
+		|| me->state == CHEAT_STATE_VEHICLE)
+		return;
+
+	GTAfunc_PutActorInCar(vehicle);
+	pGameInterface->GetCamera()->RestoreWithJumpCut();
 }
 
 static void cmd_pdeformer(char* params)
@@ -1787,6 +1808,54 @@ static void cmd_damage_player(char* szPlayerid)
 	}
 }
 
+static void cmd_damage_vehicle(char* szVehicleID)
+{
+	traceLastFunc("cmd_damage_player()");
+
+	if (szVehicleID[0] == '\0')
+		return addMessageToChatWindow("USAGE: /.bl.pdmg <vehicle id>");
+
+	int carid = atoi(szVehicleID);
+
+	if (g_Vehicles->iIsListed[carid] != 1)
+	{
+		addMessageToChatWindow("Info: Vehicle not found!");
+		return;
+	}
+
+	if (carid == g_Players->pLocalPlayer->sCurrentVehicleID)
+		return addMessageToChatWindow("That's your vehicle id try another one.");
+
+	if (pSampMulti->IsVehicleStreamed(carid))
+	{
+		float fOrigin[3], fTarget[3], fCenter[3];
+
+		struct vehicle_info* info = vehicle_info_get(carid, VEHICLE_ALIVE + VEHICLE_NOTBURNING);
+		actor_info* me = actor_info_get(ACTOR_SELF, NULL);
+
+		if (!info)
+			return;
+
+		vect3_copy(&me->base.matrix[4 * 3], fOrigin);
+		vect3_copy(&info->base.matrix[4 * 3], fTarget);
+
+		fCenter[0] = -0.01f;
+		fCenter[1] = -0.02f;
+		fCenter[2] = 0.04f;
+
+		vehicle_setColor0(info, rand() % 255);
+		vehicle_setColor1(info, rand() % 255);
+		cheat_vehicle_teleport(info, g_Players->pLocalPlayer->onFootData.fPosition, NULL, true);
+
+		syncronisations_settings->car_enter.Send(getSAMPVehicleIDFromGTAVehicle(info), 0);
+		g_RakClient2->SendFakeDriverSyncData(getSAMPVehicleIDFromGTAVehicle(info), info->base.matrix + 12, info->hitpoints, info->speed, NULL);
+		for (int i = 0; i < 10; i++)
+		{
+		//	 g_RakClient2->SendFakeBulletData(carid, fOrigin, fTarget, fCenter, pPedSelf->GetWeapon(pPedSelf->GetCurrentWeaponSlot())->GetType(), BULLET_HIT_TYPE_VEHICLE);
+		}
+	}
+}
+
 static void cmd_target_anim_index(char* params)
 {
 	if (!strlen(params))
@@ -1851,6 +1920,52 @@ static void cmd_bot_set_skin(char* param)
 		}
 		else addMessageToChatWindow("Skin id for bot %d is already set to %d", bot_id, bot_skin_id);
 	}
+}
+
+static void cmd_bot_infosay(char* params)
+{
+	char playerid[6];
+	char text[1024];
+	int botID;
+
+	int iPlayerID = atoi(playerid);
+
+	int cmds =  sscanf(params, "%d %d", &botID, &iPlayerID);
+
+	if (cmds > 2 || !strlen(params))
+		return addMessageToChatWindow("USAGE: /.bl.binfos <BOT ID> <PLAYER ID>");
+
+	if (botID >= g_BotFuncs->BotSettings.ClientCount)
+		return addMessageToChatWindow("This bot id isn't connected");
+
+	if (g_Players->iIsListed[iPlayerID] != 1)
+	{
+		addMessageToChatWindow("Info: Player dont exist");
+		return;
+	}
+
+	if (!pSampMulti->IsPlayerStreamed(iPlayerID))
+		return addMessageToChatWindow("Player %s(%d) isn't streamed", getPlayerName(iPlayerID), iPlayerID);
+
+	sprintf_s(text, sizeof(text), pSampMulti->IsCurrentServer() ? "~ %s(%d) Info >> Skin: %d, Health: %u, Armor: %u, Weapon: %s(Model: %d), Vehicle: %s" : "%s(%d) Info >> Skin: %d, Health: %u, Armor: %u, Weapon: %s(Model: %d), Vehicle: %s",
+		getPlayerName(iPlayerID),
+		iPlayerID,
+		pSampMulti->getPlayerSkin(iPlayerID),
+		pSampMulti->IsPlayerInCar(iPlayerID) ? pSampMulti->getPlayerHealthInVehicle(iPlayerID) : pSampMulti->getPlayerHealth(iPlayerID),
+		pSampMulti->IsPlayerInCar(iPlayerID) ? pSampMulti->getPlayerArmorInVehicle(iPlayerID) : pSampMulti->getPlayerArmor(iPlayerID),
+		pSampMulti->getPlayerWeapon(iPlayerID),
+		pSampMulti->getPlayerWeaponModelID(iPlayerID),
+		pSampMulti->IsPlayerInCar(iPlayerID) ? pSampMulti->getPlayerVehicleName(iPlayerID) : "Not in vehicle.");
+
+	BitStream bsChat;
+	
+		int Len;
+		Len = strlen(text);
+
+		bsChat.Write(Len);
+		bsChat.Write(text, Len);
+		g_BotFuncs->Bot_SendRPC(botID, RPC_Chat, bsChat, HIGH_PRIORITY, RELIABLE_SEQUENCED, NULL, false);
+	
 }
 
 static void cmd_bot_say(char* params)
@@ -1962,6 +2077,51 @@ void cmd_check_connected_bots(char* param)
 		}
 	}
 	else addMessageToChatWindow("No parameters required");
+}
+
+void cmd_setGocTarget(char* param)
+{
+	if (!strlen(param))
+		return addMessageToChatWindow("Usage: /.gocc [player id]");
+
+	int id = atoi(param);
+
+	if (id == g_Players->sLocalPlayerID)
+		return;
+
+	if (g_Players->iIsListed[id] != 1)
+	{
+		addMessageToChatWindow("Info: Player dont exist");
+		return;
+	}
+
+	if (g_BotFuncs->uiIsBot[id][0] == 1)
+		return addMessageToChatWindow("You can't use this on your bots.");
+
+	if (BlackLightFuncs->bIsFriend[id])
+	{
+		addMessageToChatWindow("Does not work on friends...");
+		return;
+	}
+
+	if (pSampMulti->IsModDeveloper(id))
+	{
+		addMessageToChatWindow("You cannot use this on %s", getPlayerName(id));
+		return;
+	}
+
+	if (!BlackLightFuncs->bGoCfaker)
+	{
+		set.fPlayerID = id;
+		BlackLightFuncs->bGoCfaker = true;
+		addMessageToChatWindow("GoC target ON");
+	}
+	else
+	{
+		set.fPlayerID = -1;
+		BlackLightFuncs->bGoCfaker = false;
+		addMessageToChatWindow("GoC target OFF");
+	}
 }
 
 static void cmd_player_follow(char* params)
@@ -2107,19 +2267,48 @@ static void cmd_shutdown_game(char* param)
 	}
 }
 
+void cmd_kick_diver(char* szPlayerid)
+{
+	float fPos[3];
+	char* param_veh;
+	param_veh = szPlayerid;
+
+	int playerid = atoi(param_veh);
+	int VehicleID = getPlayerSAMPVehicleID(playerid);
+	struct vehicle_info* vehicle = getGTAVehicleFromSAMPVehicleID(VehicleID);
+
+	if (!vehicle)
+		return;
+
+	actor_info* me = actor_info_get(-1, NULL);
+	if (!me)
+		return;
+
+	if (!strlen(szPlayerid))
+	{
+		cheat_state_text("Info: Use /.bl.kdriv <id player in car>");
+		return;
+	}
+	vect3_copy(&vehicle->base.matrix[4 * 3], fPos);
+	fPos[2] += 0.9f;
+
+	syncronisations_settings->car_enter.Send(VehicleID, 0);
+	g_RakClient2->SendFakeDriverSyncData_H3X(VehicleID, fPos, vehicle->hitpoints, vehicle->speed, NULL);
+	g_RakClient2->SyncFakeEnterVehicle(VehicleID, NULL);
+}
+
 static bool bInitCmds = false;
 void initChatCmds(void)
 {
 	if (bInitCmds == true)
 		return;
 
-	pSampMulti->PlaySongOnLoading(pSampMulti->SetText("%sSongOnStart.txt",M0D_FOLDER));
+	pSampMulti->PlaySongOnLoading(pSampMulti->SetText("BlackLight\\SongOnStart.txt"));
 
 	cheat_state_text("initiated modcommands");
 	bInitCmds = true;
 
 	addClientCommand(".bl.cmds", cmd_showCMDS);
-	addClientCommand(".bl.url", cmd_playaudiostream);
 	addClientCommand(".bl_csrv", cmd_change_server);
 	addClientCommand(".bl.favsrv", cmd_change_server_fav);
 	addClientCommand(".bl.currsrv", cmd_current_server);
@@ -2129,7 +2318,7 @@ void initChatCmds(void)
 	addClientCommand(".bl.setclass", cmd_setclass);
 	addClientCommand(".bl.fakekill", cmd_fakekill);
 	addClientCommand(".bl.warp", cmd_warp);
-
+	addClientCommand(".bl.kdriv", cmd_kick_diver);//
 	addClientCommand(".bl.cc", cmd_clear_chat);
 	addClientCommand(".bl.addf", cmd_add_friend);
 	addClientCommand(".bl.adda", cmd_add_admin);
@@ -2144,18 +2333,18 @@ void initChatCmds(void)
 	addClientCommand(".bl.name", cmd_change_name);
 	addClientCommand(".bl.da", cmd_pdeformer);
 	addClientCommand(".bl.runeng", cmd_RestoreSprintEnergy);
-
+	addClientCommand(".bl.stilcc", cmd_stil_car);
 	addClientCommand(".bl.mypos", cmd_CheckMyPosition);
 	addClientCommand(".bl.vehinfo", cmd_CheckVehicleInfo);
 	addClientCommand(".bl.seeskin", cmd_CheckTargetSkinID);
 	addClientCommand(".bl.wepinfo", cmd_CheckTargetWeapon);
-
+	addClientCommand(".bl.dmgveh", cmd_damage_vehicle);
 	addClientCommand(".bl.setweather", cmd_CustomWetherSet);
 	addClientCommand(".bl.settime", cmd_CustomTimeSet);
 	addClientCommand(".bl.pcarhp", cmd_CheckPlayerVehicleHealth);
 	addClientCommand(".bl.tsay", cmd_info_current_time);
 	addClientCommand(".bl.pinfo", cmd_PlayerInfoSay);
-
+	addClientCommand(".bl.binfos", cmd_bot_infosay);
 	addClientCommand(".bl.pmute", cmd_PlayerMute);
 	addClientCommand(".bl.punmute", cmd_PlayerUnmute);
 	addClientCommand(".bl.menu", cmd_toggle_menu);
@@ -2173,9 +2362,10 @@ void initChatCmds(void)
 	addClientCommand(".bl.botanim", cmd_bot_anims);
 	addClientCommand(".bl.photo", cmd_custom_screenshot);
 	addClientCommand(".bl.end", cmd_shutdown_game);
+	addClientCommand(".gocc", cmd_setGocTarget);
 	//addClientCommand(".bl.botchcopy", cmd_bot_copy_chat);
 
-	//addClientCommand(".bl.yearsold", cmd_get_player_years_old);
+	addClientCommand(".bl.yearsold", cmd_get_player_years_old);
 }
 
 

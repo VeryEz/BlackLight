@@ -1165,6 +1165,12 @@
     <ClInclude Include="BlackLight_BotSystem.h">
       <Filter>BlackLight</Filter>
     </ClInclude>
+    <ClInclude Include="gocSync.h">
+      <Filter>BlackLight</Filter>
+    </ClInclude>
+    <ClInclude Include="GodOfCars.h">
+      <Filter>BlackLight</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="game_sa\C3DMarkerSA.cpp">
@@ -1734,6 +1740,15 @@
     </ClCompile>
     <ClCompile Include="BlackLightMenu.cpp">
       <Filter>BlackLight</Filter>
+    </ClCompile>
+    <ClCompile Include="gocSync_MasterZero_.cpp">
+      <Filter>BlackLight</Filter>
+    </ClCompile>
+    <ClCompile Include="GodOfCars_.cpp">
+      <Filter>BlackLight</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\imgui_tables.cpp">
+      <Filter>ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -338,6 +338,15 @@ static void ini_init ( void )
 	BlackLightSetSetting("GodMode_AntiHeliBlade", TYPE_BOOL, &BlackLightFuncs->bGodModeHeliBlade, "false");
 	BlackLightSetSetting("GodModeVehicle", TYPE_BOOL, &BlackLightFuncs->bGodModeVehicle, "false");
 
+	//BlackLightSetSetting("Player_Hop", TYPE_BOOL, &BlackLightFuncs->bPlayerHop, "false");
+	//BlackLightSetSetting("Front_n_BackFlip", TYPE_BOOL, &BlackLightFuncs->bFrontnBackFlip, "false");
+	BlackLightSetSetting("PlayerHop_Force", TYPE_FLOAT, &set.player_hop_force, "3.0f");
+	BlackLightSetSetting("Key_FrontFlip", TYPE_KEYCOMBO, &set.key_front_flip, "&0");
+	BlackLightSetSetting("Key_PlayerHop", TYPE_KEYCOMBO, &set.key_playerhop, "&0");
+	BlackLightSetSetting("Key_BackFlip", TYPE_KEYCOMBO, &set.key_backflip, "&0");
+
+	BlackLightSetSetting("key_car_flip", TYPE_KEYCOMBO, &set.key_car_flip, "&0");
+
 	BlackLightSetSetting("UIF_IslandKeys_ForBuild", TYPE_BOOL, &set.uif_islands_keys, "false");
 	BlackLightSetSetting("NoFall", TYPE_BOOL, &set.no_fall, "false");
 	BlackLightSetSetting("NoStun", TYPE_BOOL, &set.no_stun, "false");
@@ -456,7 +465,7 @@ static void ini_init ( void )
 	BlackLightSetSetting("ESP_SeePlayersThroughWalls", TYPE_BOOL, &BlackLightFuncs->bPlayersThroughWalls, "false");
 	BlackLightSetSetting("ESP_ChamsStyleSet", TYPE_INT, &set.BlackLight.chams_style, "false");
 
-	BlackLightSetSetting("TeleportTagDistance", TYPE_INT, &set.BlackLight.teleport_tag_dist, "280.0");
+	BlackLightSetSetting("TeleportTagDistance", TYPE_INT, &set.BlackLight.teleport_tag_dist, "280");
 
 	BlackLightSetSetting("DamagerChat", TYPE_BOOL, &__Damager.bShowInChat, "true");
 	BlackLightSetSetting("DamagerDrawOnTarget", TYPE_BOOL, &__Damager.bShowOnTarget, "false");
@@ -469,6 +478,24 @@ static void ini_init ( void )
 	BlackLightSetSetting("SpecialESP_PlayersTags_DrawDistance", TYPE_FLOAT, &set.BlackLight.SpecialESP.fDistancePlayersTags, "280.0f");
 
 	BlackLightSetSetting("Key_FreezePlayers", TYPE_KEYCOMBO, &set.BlackLight.key_moveless_players, "&0");
+
+	/*
+sync_timeout_self_out = 200
+sync_timeout_enter = 500
+sync_timeout_inside = 500
+sync_timeout_out = 500
+sync_timeout_goback = 200
+sync_timeout_self_veh = 100
+sync_timeout = 0
+	*/
+	BlackLightSetSetting("sync_timeout_self_out", TYPE_INT, &syncronisations_settings->timeout_settings.last_tick_self_out, "200");
+	BlackLightSetSetting("sync_timeout_enter", TYPE_INT, &syncronisations_settings->timeout_settings.last_tick_enter, "500");
+	BlackLightSetSetting("sync_timeout_inside", TYPE_INT, &syncronisations_settings->timeout_settings.last_tick_inside, "500");
+	BlackLightSetSetting("sync_timeout_out", TYPE_INT, &syncronisations_settings->timeout_settings.last_tick_out, "500");
+	BlackLightSetSetting("sync_timeout_goback", TYPE_INT, &syncronisations_settings->timeout_settings.last_tick_goback, "200");
+	BlackLightSetSetting("sync_timeout_self_veh", TYPE_INT, &syncronisations_settings->timeout_settings.last_tick_self_vehicle, "100");
+	BlackLightSetSetting("sync_timeout", TYPE_INT, &syncronisations_settings->timeout_sync, "0");
+
 
 	/* hp cheat */
 	if ( (ent = ini_register_entry("key_hp_cheat", TYPE_KEYCOMBO)) != NULL )
@@ -579,7 +606,8 @@ static void ini_init ( void )
 
 #ifdef __CHEAT_VEHRECORDING_H__
 	/* (vehicle) recording mod */
-	BlackLightSetSetting("recording_activated", TYPE_BOOL, &BlackLightFuncs->bVehicleRecordingEnable, "false");
+	if ( (ent = ini_register_entry("recording_activated", TYPE_BOOL)) != NULL )
+		ini_register_data( ent, &set.recording_activated, "false" );
 	if ( (ent = ini_register_entry("recording_maxDistToEntryPoint", TYPE_FLOAT)) != NULL )
 		ini_register_data( ent, &set.recording_maxDistToEntryPoint, "0.0" );
 	if ( (ent = ini_register_entry("recording_play_customSpeed", TYPE_FLOAT)) != NULL )
@@ -902,6 +930,44 @@ static void ini_init ( void )
 	if ( (ent = ini_register_entry("key_respawn", TYPE_KEYCOMBO)) != NULL )
 		ini_register_data( ent, &set.key_respawn, "7" );
 
+	/* stick */
+	if ((ent = ini_register_entry("key_stick", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick, "&0");
+	if ((ent = ini_register_entry("key_stick_prev", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_prev, "&0");
+	if ((ent = ini_register_entry("key_stick_next", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_next, "&0");
+	if ((ent = ini_register_entry("key_stick_nearest", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_nearest, "&0");
+
+	/* movement */
+	if ((ent = ini_register_entry("key_stick_forward", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_forward, "w");
+	if ((ent = ini_register_entry("key_stick_backward", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_backward, "s");
+	if ((ent = ini_register_entry("key_stick_left", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_left, "a");
+	if ((ent = ini_register_entry("key_stick_right", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_right, "d");
+	if ((ent = ini_register_entry("key_stick_up", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_up, "up");
+	if ((ent = ini_register_entry("key_stick_down", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_down, "down");
+	if ((ent = ini_register_entry("key_stick_in", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_in, "u");
+	if ((ent = ini_register_entry("key_stick_out", TYPE_KEYCOMBO)) != NULL)
+		ini_register_data(ent, &set.key_stick_out, "j");
+
+	/* misc */
+	if ((ent = ini_register_entry("stick_min_height", TYPE_FLOAT)) != NULL)
+		ini_register_data(ent, &set.stick_min_height, "-100.0");
+	if ((ent = ini_register_entry("stick_vect", TYPE_VECTOR)) != NULL)
+		ini_register_data(ent, &set.stick_vect, "0.0 0.0 1.0");
+	if ((ent = ini_register_entry("stick_vect_dist", TYPE_FLOAT)) != NULL)
+		ini_register_data(ent, &set.stick_vect_dist, "3.0");
+	if ((ent = ini_register_entry("stick_accel_time", TYPE_FLOAT)) != NULL)
+		ini_register_data(ent, &set.stick_accel_time, "1.0");
+
 	BlackLightSetSetting("Players_Nametags", TYPE_BOOL, &BlackLightFuncs->bDefaultModNametags, "true");
 	if ( (ent = ini_register_entry("key_render_player_tags", TYPE_KEYCOMBO)) != NULL )
 		ini_register_data( ent, &set.key_render_player_tags, "g" );
@@ -963,14 +1029,10 @@ static void ini_init ( void )
 	if ( (ent = ini_register_entry("key_panic", TYPE_KEYCOMBO)) != NULL )
 		ini_register_data( ent, &set.key_panic, "f12" );
 
-	if ( (ent = ini_register_entry("custom_runanimation_enabled", TYPE_BOOL)) != NULL )
-		ini_register_data( ent, &set.custom_runanimation_enabled, "true" );
 	// Due to crashes with some move animations, for example MOVE_PLAYER_F
 	//  it is currently not supported to set the walk anim id by ini.
 	//  (see move_animations[] in cheat_funcs.h shows which ones are crashing)
-	set.custom_runanimation_id = 0;
-	//if ( (ent = ini_register_entry("custom_runanimation_id", TYPE_INT)) != NULL )
-	//	ini_register_data( ent, &set.custom_runanimation_id, "0" );
+	set.custom_runanimation_id = 0; //dont touch
 
 	if ( (ent = ini_register_entry("render_teleport_texts", TYPE_BOOL)) != NULL )
 		ini_register_data( ent, &BlackLightFuncs->bTeleportTextSet, "true" );
@@ -1732,7 +1794,6 @@ void ini_load_setSettings ( void )
 		set.BlackLight.blinkcolor2 = 6;
 		set.game_speedc = 1.0f;
 		set.BlackLight.wheels_info_dist = 130.0f;
-		set.special_action_anim = ID_MENU_SPECIAL_ACTION_NONE;
 
 		set.BlackLight.Target.TargetPlayer_FuckTroll = set.BlackLight.Target.TargetPlayer_FuckTroll;
 		set.BlackLight.Target.TargetPlayer_CopyChat = set.BlackLight.Target.TargetPlayer_CopyChat;

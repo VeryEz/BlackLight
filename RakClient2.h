@@ -265,15 +265,20 @@ public:
 	bool Send(BitStream *bitStream, PacketPriority priority = HIGH_PRIORITY, PacketReliability reliability = UNRELIABLE_SEQUENCED, char orderingChannel = 0);
 	void SendDeath(uint16_t killerId, uint8_t reason);
 	void RequestClass(int classId);
-	void PlayAudioStream(const char* url);
+	void SyncFakeEnterVehicle(WORD vehicleid, int  passid);
 	void SendSCMEvent(int vehicleID, int eventId, int param1, int param2);
 	void SendSpawn(void);
 	void SendPickUp(int pickupId);
 	void SendFakeSpecData(float fPos[3]);
 	void SendFakeBulletData(uint16_t PlayerID, float Origin[3], float Target[3], float  Center[3], uint8_t WeaponID, BYTE type);
 	void SendFakeOnfootSyncData(float fPos[3], float fSpeed[3], float Health, float Armor, int AnimFlags, int AnimationID, float Quaternion[4]);
-	void SendFakeDriverSyncData(int iSAMPVehicleID, float fVehiclePos[3], float fVehicleHealth, float fMoveSpeed[3]);
-	void SendFakeDriverSyncData_TWO(WORD vehicleid, float fPos[3], float HealthCar, float Speed[3], WORD key, WORD trailer);
+	void SendFakeDriverSyncData_(int iSAMPVehicleID, float fVehiclePos[3], float fVehicleHealth, float fMoveSpeed[3]);
+	
+	void SendFakeDriverSyncData(WORD vehicleid, float fPos[3], float HealthCar, float Speed[3], WORD key, WORD trailer = -1);// be
+	void SendFakePassengerSyncData(WORD vehicleid, float fPos[3], float HealthCar, uint8_t WeaponID, int SeatID, WORD key);
+	void SendUnoccupiedSyncData(WORD vehicleid, float fPos[3], float HealthCar, float Speed[3], int SeatID);
+	void SendFakeTrailerData(WORD vehicleid, float fpos[3], float HealthCar, float speed[3]);
+
 	void SendFakeDriverSyncData_H3X(USHORT VehicleID, float fPos[3], float HealthCar, float Speed[3], WORD key);
 	void SendFakeUnnocopiedSyncData(float fPos[3], float fSpeed[3], float fTurnSpeed[3], float fHealth, int16_t sVehicleID);
 	void SendDamageVehicle(WORD vehicleID, DWORD panel, DWORD door, BYTE lights, BYTE tires);

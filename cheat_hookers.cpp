@@ -1040,7 +1040,7 @@ hk_PlCol_process:
 		goto hk_PlCol_noCol;
 
 	// No vehicle collisions
-	if (BlackLightFuncs->bVehicleNoCollision)
+	if (BlackLightFuncs->bVehicleNoCollision || GoC->main || BlackLightFuncs->bCarRammer)
 	{
 		// Vehicle (edi) -> vehicle(esi)/actor(esi)
 		if ( !isBadPtr_GTA_pVehicle((vehicle_info *)PlayerCollision_edi_back) &&
@@ -1068,7 +1068,7 @@ hk_PlCol_process:
 			goto hk_PlCol_noCol;
 	}
 
-	if(BlackLightFuncs->bWorldCollision)
+	if(BlackLightFuncs->bWorldCollision || BlackLightFuncs->bNoCollisionSurf)
 		goto hk_PlCol_noCol;
 
 	// get own vehicle

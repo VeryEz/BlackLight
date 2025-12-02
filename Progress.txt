@@ -21,7 +21,7 @@ Menu:
 - add mp3 current playing song name & duration into the new hud - done
 - add radio song name into the new hud - done
 - add button for mp3 song loop in settings - done
-- add default stick mod into funcs for target in players menu
+- add default stick mod into funcs for target in players menu - done
 - add airbreak in players menu - done
 - add player mute menu in players functions - done
 - fix or remove users panel menu view
@@ -82,29 +82,45 @@ add spammer system
 add players freeze - done
 add slow down system for player surf
 fix trailer tracers - done
-fix freeze players 
+fix freeze players / players freezeing on first location
 
 //troll menu for target
 create 1 menus for:
 fuck , copy chat, follow troll, player stick,  - done
 
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+- add imgui menu buttons on screen for easier stick switching = ?
+- added chat message when switching between stick targets
+- fix player boss fly anim reseting when accelerating forward - done
 
-BlackLight UPDATE V1.4 - 
-- Update Started: 09.24.2022. 
+//as of november 2025
+- updated imgui to latest version
+- updated imgui speedmeter & added settings & moveable with mouse
+- added god of cars with sync and fakers 
+- added front & back flip (q, e)
+- added 3D wheels ESP boxes
+- added 3D player ESP boxes
+- added player jump (B) with slider in menu
+- added car instant flip on all 4 wheels if it is on roof (rmb)
+- added back vehicle & player stick mod
+- added backward walk sync (a.k.a moon walk) now visible to local player
+- fixed radio not being called in different thread when loading url instead it freezes the game 
+- fixed invisible & world collision being activated upon starting the game 
+- fixed Vehicle no Frame - now deactivating properly 
+- fixed sobeit default speedmeter .png files not loading properly
+- fixed custom weather not returning properly to current server weather
+- fixed teleport interior button does not contain teleport location name & id - done
+- fixed imgui scoreboard player color names not displayed correctly
 
-- REQUIRED FIX - fix all admins are being removed from admins list when deleting last admin in the row
-fix when clicked on 'Copy server address' button in Settings game crashes - fixed
-add original mod s0beit stick-to-player&car mod
-add more descriptions for functions
-add more customisation options for hud
-add custom Blacklight game chat
-move all functions from dumb menu to new Blacklight menu
-fix teleport menu text only stating 'Teleport'
-fix menu god mode for player and players vehicle
-add menu for vehicle recording - done
-add spammer system
-add telepos menu in the hud
-add menu for custom url audio stream play using sa:mp rpc system - done
-check whats wrong with the teletext
-improve imgui's speedmeter look
+//dec 2025
+- add rainbow skin
+- add object stealer
+- added wheels auto shoot
+- added custom run animation to imgui menu -> player funcs
+- fixed god mode player & vehicle activation from imgui menu
+- fixed bug with rainbow nicknames not restoring original samp colors when deactivated
+- fixed bug with rainbow hud not deactivating properly
+- fixed bug where wheel esp did not draw correctly on larger vehicles
+- fixed bug where imgui speedmeter could not move with mouse due to overlayed menu
+- fixed bug which did not display imgui friends & admins color properly
+- fixed 'Copy Server Address' button resulting in a crash
+- dealt with additional bug fixes for main menu

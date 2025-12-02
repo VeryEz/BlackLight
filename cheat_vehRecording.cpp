@@ -481,7 +481,7 @@ void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff
 	float set_speed[3];
 	float set_spin[3];
 
-	if ( info == NULL || !BlackLightFuncs->bVehicleRecordingEnable )
+	if ( info == NULL || !set.recording_activated )
 		return;
 	
 	traceLastFunc( "cheat_handle_vehicle_recording()" );
@@ -502,7 +502,6 @@ void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff
 			rec_index = 0;
 			rec_playNext = 0.0f;
 		}
-		set.recording_status = rec_state;
 	}
 
 	if ( KEY_PRESSED(set.key_recording_continueAfterFinish) )
@@ -574,7 +573,6 @@ void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff
 					if ( rec_index_new == -1 )
 					{
 						rec_state = RECORDING_OFF;
-						set.recording_status = rec_state;
 						cheat_state_text( "Too far from route - maxDist: %0.2f", set.recording_maxDistToEntryPoint );
 					}
 					else
@@ -605,22 +603,20 @@ void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff
 		{
 			rec_maxNum = rec_index;
 			rec_state = RECORDING_OFF;
-			set.recording_status = rec_state;
 		}
 	}
 	// >= because only play states should follow after RECORDING_PLAY
 	else if ( rec_state >= RECORDING_PLAY )
 	{
 		// deactivate playing records while air brakeing/sticking
-		if (BlackLightFuncs->bAirbreakVehicle || BlackLightFuncs->bVehicleFly) //  cheat_state->vehicle.air_brake || cheat_state->vehicle.stick )
+		if ( cheat_state->vehicle.air_brake || cheat_state->vehicle.stick )
 		{
 			rec_state = RECORDING_OFF;
-			set.recording_status = rec_state;
 			return;
 		}
 
 		// move into some better place (maybe hud?)
-		_snprintf_s( buffer, sizeof(buffer)-1, "Vehicle Play Record %s%s", (rec_state == RECORDING_PLAY_REV
+		_snprintf_s( buffer, sizeof(buffer)-1, "Vehicle Play Record%s%s", (rec_state == RECORDING_PLAY_REV
 			|| rec_state == RECORDING_PLAY_REV_CUSTOMSPEED) ? " (Rev)" : "",
 			rec_continueAfterFin ? " (Continuously)" : "" );
 		_snprintf_s( buffer, sizeof(buffer)-1, "%s%s", buffer, (rec_state == RECORDING_PLAY_REV_CUSTOMSPEED
@@ -702,21 +698,15 @@ void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff
 			// reached end of recording
 			if ( rec_index <= 0 )
 			{
-				if (!rec_continueAfterFin)
-				{
+				if ( !rec_continueAfterFin )
 					rec_state = RECORDING_OFF;
-					set.recording_status = rec_state;
-				}
 				else
 				{
 					if ( set.recording_maxDistToEntryPoint > 0.0f )
 					{
 						// deactivate, if new starting position is too far from this point
-						if (vect3_dist(rec_pos[rec_index], rec_pos[(rec_maxNum - 1)]) > set.recording_maxDistToEntryPoint)
-						{
+						if ( vect3_dist(rec_pos[rec_index], rec_pos[(rec_maxNum-1)]) > set.recording_maxDistToEntryPoint )
 							rec_state = RECORDING_OFF;
-							set.recording_status = rec_state;
-						}
 					}
 					rec_index = (rec_maxNum-1);
 				}
@@ -729,21 +719,15 @@ void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff
 			// reached end of recording
 			if ( (rec_index >= (REC_ARRAYSIZE-1) || rec_index >= rec_maxNum) )
 			{
-				if (!rec_continueAfterFin)
-				{
+				if ( !rec_continueAfterFin )
 					rec_state = RECORDING_OFF;
-					set.recording_status = rec_state;
-				}
 				else
 				{
-					if (set.recording_maxDistToEntryPoint > 0.0f)
+					if ( set.recording_maxDistToEntryPoint > 0.0f )
 					{
 						// deactivate, if new starting position is too far from this point
-						if (vect3_dist(rec_pos[rec_index], rec_pos[0]) > set.recording_maxDistToEntryPoint)
-						{
+						if ( vect3_dist(rec_pos[rec_index], rec_pos[0]) > set.recording_maxDistToEntryPoint )
 							rec_state = RECORDING_OFF;
-							set.recording_status = rec_state;
-						}
 					}
 					rec_index = 0;
 				}
@@ -757,7 +741,6 @@ void cheat_handle_vehicle_recording ( struct vehicle_info *info, float time_diff
 	else
 	{
 		rec_state = RECORDING_OFF;
-		set.recording_status = rec_state;
 	}
 }
 #endif
